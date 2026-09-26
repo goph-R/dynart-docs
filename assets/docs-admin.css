@@ -1,0 +1,11 @@
+/* The Documentation screen's status box: labels in a column of their own, as a form's are */
+.docs-status { margin-bottom: 18px; }
+.docs-status dl { display: grid; grid-template-columns: max-content 1fr; gap: 10px 22px; margin: 0; }
+.docs-status dt { color: var(--muted); }
+.docs-status dd { margin: 0; overflow-wrap: anywhere; }
+.docs-problems { margin: 8px 0 0; padding-left: 18px; }
+.docs-problems li { margin: 2px 0; }
+@media (max-width: 600px) {
+    .docs-status dl { grid-template-columns: 1fr; gap: 2px; }
+    .docs-status dd { margin-bottom: 10px; }
+}

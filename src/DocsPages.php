@@ -41,7 +41,7 @@ class DocsPages {
     }
 
     /**
-     * Every page without its HTML: `id`, `path`, `title`, `parent_id`, `position`, `sequence`
+     * Every page without its HTML: `id`, `path`, `title`, `parent_id`, `position`, `sequence`, `source`
      *
      * @return array<int, array> keyed by id, in reading order
      */
@@ -49,7 +49,7 @@ class DocsPages {
         if ($this->outline === null) {
             $this->outline = [];
             $rows = $this->db->fetchAll(
-                'select `id`, `path`, `title`, `parent_id`, `position`, `sequence` from '.$this->table()
+                'select `id`, `path`, `title`, `parent_id`, `position`, `sequence`, `source` from '.$this->table()
                 .' order by `sequence`'
             );
             foreach ($rows as $row) {

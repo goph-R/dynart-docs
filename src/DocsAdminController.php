@@ -16,7 +16,13 @@ use Dynart\Docs\Build\BuildReport;
 use Dynart\Docs\Build\DocsBuilder;
 
 /**
- * The build, from the admin - what the Build button in the settings posts to
+ * The Documentation screen: where the pages come from, how the last build went, and the tree
+ *
+ * Read-only apart from Build. The pages are the source folder's, so there is nothing to edit
+ * here - a change is made in the Markdown and built.
+ *
+ * Behind the permission that reads the settings, since everything it shows is what two
+ * settings and the last build made of them.
  */
 class DocsAdminController extends AbstractAdminController {
 
@@ -32,16 +38,69 @@ class DocsAdminController extends AbstractAdminController {
         FormFactory $forms,
         ListRequest $list,
         protected DocsBuilder $builder,
+        protected DocsPages $pages,
     ) {
         parent::__construct($view, $router, $request, $config, $jwtAuth, $forms, $list);
     }
 
     protected function section(): string {
-        return 'settings';
+        return Docs::ADMIN_SECTION;
+    }
+
+    /** Where a Build may go back to: this screen, or the settings its button is also on */
+    const BACK = ['docs' => '/admin/docs', 'settings' => '/admin/settings'];
+
+    #[Route('GET', '/admin/docs')]
+    public function index(): string {
+        $this->requirePermission(Permissions::SETTING_VIEW);
+        $canBuild = $this->can(Permissions::SETTING_UPDATE);
+        return $this->admin('docs:admin/index', [
+            'title'      => 'Documentation',
+            'source'     => $this->builder->sourceFolder(),
+            'public_url' => $this->router->url($this->builder->route('')),
+            'last'       => $this->builder->lastBuild(),
+            'status'     => $this->builder->status(),
+            'build_url'  => $canBuild ? $this->router->url('/admin/docs/build', ['back' => 'docs']) : '',
+            'settings_url' => $this->router->url('/admin/settings'),
+            'rows'       => $this->treeRows(),
+            'columns'    => [
+                'title'  => ['label' => 'Title', 'tree' => true, 'link' => 'view_url'],
+                'path'   => ['label' => 'Address'],
+                'source' => ['label' => 'Source'],
+            ],
+            'row_actions' => [
+                ['title' => 'View', 'icon' => $this->icon('eye'), 'link' => 'view_url'],
+            ],
+        ]);
     }
 
     /**
-     * Builds from the saved settings and goes back to them, with how it went as the notice
+     * The built pages, depth first, with the depth the tree partial indents by
+     */
+    protected function treeRows(): array {
+        $children = $this->pages->children();
+        $rows = [];
+        $walk = function (int $parent, int $depth) use (&$walk, &$rows, $children): void {
+            foreach ($children[$parent] ?? [] as $row) {
+                $rows[] = [
+                    'id'        => $row['id'],
+                    'parent_id' => $row['parent_id'],
+                    'depth'     => $depth,
+                    'title'     => $row['title'],
+                    'path'      => '/'.ltrim($this->builder->route($row['path']), '/'),
+                    'source'    => $row['source'],
+                    'view_url'  => $this->router->url($this->builder->route($row['path'])),
+                ];
+                $walk($row['id'], $depth + 1);
+            }
+        };
+        $walk(0, 0);
+        return $rows;
+    }
+
+    /**
+     * Builds from the saved settings and goes back where it came from, with how it went as the
+     * notice - this screen, or the settings
      *
      * Behind the permission that saves the settings: a build replaces every page of the
      * documentation, which is at least as much of a change to the site as a setting is.
@@ -50,7 +109,8 @@ class DocsAdminController extends AbstractAdminController {
     public function build(): string {
         $this->requirePermission(Permissions::SETTING_UPDATE);
         $this->requireAction();
-        $this->done('/admin/settings', $this->summary($this->builder->build()));
+        $back = self::BACK[(string)$this->request->get('back', '')] ?? self::BACK['settings'];
+        $this->done($back, $this->summary($this->builder->build()));
         return '';
     }
 

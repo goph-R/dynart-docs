@@ -1,9 +1,10 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.2.0, on Dpress 0.78.1 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.3.0, on Dpress 0.79.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
-with the old `.html` addresses answered by a 301. Next: the admin screen (step 4 below).
+with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. Next:
+Pascal highlighting (step 5 below).
 
 A Dpress plugin that does what `sphinx-build` does for
 [docs-public](https://github.com/DynartInteractive/docs-public) - reads a folder of MyST Markdown,
@@ -79,7 +80,10 @@ What it does:
   **previous / next** in the tree's reading order, as Sphinx's theme has.
 - **`/docs`** - the root `index.md`.
 - **The *Documentation tree* block**, placed in the sidebar: the tree, the branch of the current
-  page open, the page itself marked; draws nothing on a page that is not documentation.
+  page open, the page itself marked; draws nothing on a page that is not documentation. **On a
+  documentation page it is alone in its place** - the tag cloud, the categories and the rest are
+  the blog's way around, not the manual's. Through `block:before_render` (Dpress 0.79.0), so the
+  footer and every other page keep their blocks.
 - **Internal links**: `docs#12`-style references are not needed - the source links by path, and
   the build turns those into addresses.
 
@@ -118,9 +122,14 @@ with a **301 Moved Permanently**:
 
 ## What the admin gets
 
-A **Documentation** section in the navigation, with: the source folder, the base path, the time
-and result of the last build, a **Rebuild** button, and the list of built pages (read-only, each
-with a View). The settings are in their own *Documentation* section of the Site tab.
+A **Documentation** section in the navigation, after Pages, with: the source folder, the address,
+the time and result of the last build - its problems listed - a **Build now** button, and the tree
+of built pages (read-only, each with a View). The settings are in their own *Documentation* section
+of the Site tab, which has a Build button too; each goes back to the screen it was pressed on.
+
+The last build is kept in a setting, `docs_last_build`, written by every build - the button's and
+`dpress docs:build`'s alike. Not the pages' `built_at`: a build that makes nothing leaves the last
+good pages up, and the screen has to say both.
 
 ## On production
 
@@ -139,5 +148,5 @@ Rebuild button. The build reads only inside the folder it is given.
    they were added, so the site's `/*` took `/docs/*` too. A longer catch-all is tried first now
    (dynart-micro 0.20.3). A page's own `# Title` is taken out of its body and drawn as the
    theme's `entry-title`, keeping its id. A path in another case is a 301 to the real one.
-4. **Plugin, the admin:** the section, the settings, Rebuild and its report.
+4. **Plugin, the admin:** the section, the settings, Rebuild and its report. **Done.**
 5. **Highlighter:** a Pascal language for EnlighterJS - separate, and it helps the blog's posts too.

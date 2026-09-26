@@ -1,0 +1,64 @@
+<?php
+/**
+ * The Documentation screen - see `DocsAdminController::index()`
+ *
+ * The tree is the core's `dpress_admin:tree` with nothing to drag: the order is the source's
+ * toctrees, and it changes where they are written.
+ *
+ * Expects: $source, $public_url, $last (`lastBuild()`, or null), $status (`status()`),
+ * $build_url ('' without the permission), $settings_url, $rows, $columns, $row_actions.
+ */
+$hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg');
+?>
+<?php $this->useLayout($admin_layout) ?>
+<?php $this->startBlock('content') ?>
+    <div class="page-head">
+        <h1>Documentation</h1>
+        <span class="spacer"></span>
+        <a class="button with-icon" href="<?= esc_attr($settings_url) ?>"><?= \Dynart\Dpress\Dpress::icon('settings') ?> Settings</a>
+        <?php if ($build_url !== ''): ?>
+            <button type="button" class="button primary with-icon"
+                    onclick="Dpress.post(<?= esc_attr(json_encode($build_url)) ?>)"><?= $hammer ?> Build now</button>
+        <?php endif ?>
+    </div>
+
+    <div class="panel docs-status">
+        <dl>
+            <dt>Source folder</dt>
+            <dd><?= $source !== '' ? '<code>'.esc_html($source).'</code>' : 'Not set - the Settings has it, in the Documentation section.' ?></dd>
+            <dt>Address</dt>
+            <dd><a href="<?= esc_attr($public_url) ?>"><?= esc_html($public_url) ?></a></dd>
+            <dt>Last build</dt>
+            <dd>
+                <?php if ($last === null): ?>
+                    Not built yet.
+                <?php else: ?>
+                    <?= esc_html(substr((string)$last['at'], 0, 16)) ?> UTC -
+                    <?= (int)$last['pages'] > 0 ? (int)$last['pages'].' page(s)' : 'nothing was built' ?><?=
+                        empty($last['problems']) ? ', no problems.' : ', '.(count($last['problems']) + (int)($last['more'] ?? 0)).' thing(s) to look at:' ?>
+                    <?php if (!empty($last['problems'])): ?>
+                        <ul class="docs-problems">
+                            <?php foreach ($last['problems'] as $problem): ?>
+                                <li><?php if ((string)$problem['file'] !== ''): ?><code><?= esc_html((string)$problem['file']) ?></code>: <?php endif ?><?= esc_html((string)$problem['message']) ?></li>
+                            <?php endforeach ?>
+                            <?php if ((int)($last['more'] ?? 0) > 0): ?>
+                                <li>And <?= (int)$last['more'] ?> more - <code>dpress docs:build</code> lists them all.</li>
+                            <?php endif ?>
+                        </ul>
+                    <?php endif ?>
+                <?php endif ?>
+            </dd>
+            <?php if ($last !== null && (int)$last['pages'] === 0 && (int)$status['pages'] > 0): ?>
+                <dt>On the site</dt>
+                <dd><?= (int)$status['pages'] ?> page(s) from the build of <?= esc_html(substr((string)$status['built_at'], 0, 16)) ?> UTC - a build that makes nothing takes nothing down.</dd>
+            <?php endif ?>
+        </dl>
+    </div>
+
+    <?= $this->fetch('dpress_admin:tree', [
+        'rows'       => $rows,
+        'columns'    => $columns,
+        'rowActions' => $row_actions,
+        'empty'      => 'Nothing is built yet.',
+    ]) ?>
+<?php $this->endBlock() ?>

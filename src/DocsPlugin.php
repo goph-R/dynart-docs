@@ -8,6 +8,8 @@ use Dynart\Micro\RouterInterface;
 use Dynart\Dpress\Form\AdminForms;
 use Dynart\Dpress\Form\FormFactory;
 use Dynart\Dpress\Plugin\AbstractPlugin;
+use Dynart\Dpress\Security\Permissions;
+use Dynart\Dpress\Service\BlockService;
 use Dynart\Dpress\Service\SettingFields;
 use Dynart\Docs\Build\DocsBuilder;
 
@@ -48,7 +50,7 @@ class DocsPlugin extends AbstractPlugin {
     /** The tree, in whichever place a site puts it - it draws only on a documentation page */
     public function blocks(): array {
         return [
-            'docs_tree' => [
+            DocsTreeBlock::TYPE => [
                 'title'  => 'Documentation tree',
                 'render' => [DocsTreeBlock::class, 'render'],
                 'fields' => [],
@@ -59,6 +61,22 @@ class DocsPlugin extends AbstractPlugin {
     /** `data-docs` is on the documentation page and on the tree, and nowhere else */
     public function pageAssets(): array {
         return ['docs.css' => 'data-docs'];
+    }
+
+    /** The status box of the Documentation screen */
+    public function assets(): array {
+        return ['docs-admin.css'];
+    }
+
+    /** The Documentation screen, after Pages: it is content, read-only as it is here */
+    public function adminSections(): array {
+        return [Docs::ADMIN_SECTION => [
+            'label'      => 'Documentation',
+            'route'      => '/admin/docs',
+            'permission' => Permissions::SETTING_VIEW,
+            'icon'       => 'icons/docs.svg',   // resolved against the plugin's folder
+            'after'      => 'pages',
+        ]];
     }
 
     public function entities(): array {
@@ -86,6 +104,10 @@ class DocsPlugin extends AbstractPlugin {
         Micro::get(EventServiceInterface::class)->subscribe(
             FormFactory::eventName(AdminForms::SETTINGS),
             [DocsSettings::class, 'onSettingsForm']
+        );
+        // the tree alone in its place on a documentation page
+        Micro::get(EventServiceInterface::class)->subscribe(
+            BlockService::EVENT_BEFORE_RENDER, [DocsTreeBlock::class, 'onBeforeRender']
         );
     }
 

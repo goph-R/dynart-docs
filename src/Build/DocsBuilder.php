@@ -78,7 +78,37 @@ class DocsBuilder {
         return '/'.$this->base().($path !== '' ? '/'.$path : '');
     }
 
+    /**
+     * How the last build went, or null before the first one
+     *
+     * Not `status()`: a build that finds nothing to build leaves the pages it did not replace,
+     * so the table can say "54 pages" while the last attempt said "the folder is not there" -
+     * and the second is what somebody pressing Build wants to read.
+     *
+     * @return array{at: string, pages: int, problems: array[]}|null
+     */
+    public function lastBuild(): ?array {
+        $last = json_decode((string)$this->settings->get(Docs::LAST_BUILD, ''), true);
+        return is_array($last) && isset($last['at']) ? $last + ['pages' => 0, 'problems' => []] : null;
+    }
+
+    /** Builds, and keeps how it went for `lastBuild()` */
     public function build(?string $folder = null): BuildReport {
+        $report = $this->run($folder);
+        $this->settings->set(Docs::LAST_BUILD, json_encode([
+            'at'       => gmdate('Y-m-d H:i:s'),
+            'pages'    => $report->pages,
+            // a broken source can have a problem on every line; a screen needs the first ones
+            'problems' => array_slice($report->problems, 0, self::KEEP_PROBLEMS),
+            'more'     => max(0, count($report->problems) - self::KEEP_PROBLEMS),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return $report;
+    }
+
+    /** How many of a build's problems `lastBuild()` keeps */
+    const KEEP_PROBLEMS = 50;
+
+    protected function run(?string $folder): BuildReport {
         $report = new BuildReport();
         $folder = $folder ?? $this->sourceFolder();
         if ($folder === '' || !is_dir($folder)) {

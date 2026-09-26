@@ -19,4 +19,13 @@ class Docs {
 
     /** The file a folder's page is, and the one the whole tree starts at */
     const INDEX = 'index';
+
+    /**
+     * What the last build left, as JSON: `at`, `pages`, `problems` - a setting nobody edits,
+     * written by every build, from the admin or from `dpress docs:build`
+     */
+    const LAST_BUILD = 'docs_last_build';
+
+    /** The admin navigation's key for the Documentation screen */
+    const ADMIN_SECTION = 'docs';
 }

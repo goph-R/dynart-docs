@@ -27,6 +27,28 @@ class DocsTreeBlock {
         protected DocsBuilder $builder,
     ) {}
 
+    /**
+     * On a documentation page, the place the tree is in holds the tree and nothing else
+     *
+     * Subscribed to `block:before_render`. A tag cloud and a category list are the blog's way
+     * around, and beside a manual they are noise; the other places - a footer - keep theirs, and
+     * so does every page that is not documentation.
+     *
+     * @param Block[] $blocks
+     */
+    public function onBeforeRender(string $place, array &$blocks): void {
+        if ($this->context->page() === null) {
+            return;
+        }
+        $trees = array_filter($blocks, fn(Block $block): bool => $block->type === self::TYPE);
+        if ($trees !== []) {
+            $blocks = array_values($trees);
+        }
+    }
+
+    /** The block's type, as `DocsPlugin::blocks()` names it */
+    const TYPE = 'docs_tree';
+
     public function render(Block $block, array $settings): string {
         $page = $this->context->page();
         if ($page === null) {
