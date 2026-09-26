@@ -1,0 +1,138 @@
+# Docs - a documentation site from a folder of Markdown
+
+**Status: the build works** (plugin 0.1.0, on Dpress 0.78.0). `dpress docs:build` builds all 54
+pages `docs-public`'s toctrees reach, with **the heading ids of the Sphinx build on every one** -
+checked against its `_build/html`. Next: the public pages and the tree block (step 3 below).
+
+A Dpress plugin that does what `sphinx-build` does for
+[docs-public](https://github.com/DynartInteractive/docs-public) - reads a folder of MyST Markdown,
+follows its `toctree`s into a tree, and publishes it - but through Dpress's own renderer, so
+shortcodes, callouts, code highlighting and internal links all work, and the pages are drawn by
+the site's theme with the rest of the blog.
+
+## Decisions
+
+| | |
+|---|---|
+| Where the pages live | **The plugin's own table**, rebuilt from the files. The files are the only source; nothing is edited in the admin, and the blog's Pages are not touched. |
+| Their address | **The files' own case**: `/docs/dos-game-engine/BASICS/VGA`. The base (`docs`) is a setting. |
+| The tree | **A block**, for the sidebar, drawn **only on a documentation page** - the blog's own pages keep the sidebar they had. |
+
+## What the source is
+
+`docs-public` today: **59 pages, ~9,200 lines**, in three git submodules (`lisa-engine`,
+`dos-game-engine`, `legal`), built with Sphinx + MyST + `sphinx_rtd_theme`. Beyond CommonMark it
+uses, and the build has to understand:
+
+| Syntax | Where | Becomes |
+|---|---|---|
+| ```` ```{toctree} ```` with `:maxdepth:`, `:caption:` | 11 `index.md` files | the tree - see below |
+| ```` ```{note} ```` | 1 page | a Dpress callout, `> [!NOTE]` |
+| `{#id}` on a line before a block, and `{#id .class}` | `legal/terms-of-use.md` | an `id` on the heading that follows |
+| ``{ref}`id` `` | `legal/terms-of-use.md` | a link to that `id`, its text the heading's |
+| `[text](../ENGINE/BASEGAME.md)`, relative | 16 pages | a link to that page's address |
+| `<br>` in a table cell | tables in `dos-game-engine` | `{{ br() }}` - raw HTML is stripped by the renderer |
+| bare URLs (`linkify`) | throughout | Dpress's autolinks already |
+
+**Not yet**, and worth saying: **Pascal is not a language the code highlighter knows** (EnlighterJS
+has no Pascal), and 338 of the code blocks are Pascal - they render as plain code until a Pascal
+definition is added to the highlighter. No page has an image yet, so images - which would have to
+be copied or served from the source folder - are left for when one does.
+
+## The build
+
+A pass like `sphinx-build`'s, run:
+
+- when the **source folder** is saved on the plugin's settings (its own section, *Documentation*);
+- from a **Rebuild** button on the plugin's admin screen - in the navigation through
+  `adminSections()` (Dpress 0.77.0);
+- from **`dpress docs:build`**, for a deploy or a cron job - which needs one thing the core does
+  not have yet: **plugins cannot add CLI commands** (`DpressCliApp::COMMANDS` is a constant). A
+  `commands()` on the plugin interface, the same shape of change as `adminSections()`, comes first.
+
+What it does:
+
+1. **Start at `index.md`** in the source folder and follow each `toctree` in order: an entry is a
+   path relative to the file it is in, without `.md`. What no `toctree` reaches is not published -
+   Sphinx's rule, which is what keeps `README.md`, `CLAUDE.md` and `_build/` out.
+2. **Each page**: read it, run the **MyST pre-pass** (the table above), render it through
+   `MarkdownRenderer`, keep its **title** (the first `#` heading) and its **headings** (for an
+   "on this page" list), and its place: parent, position among its siblings.
+3. **A `toctree` in a page** is replaced by the list of its entries - the links Sphinx draws in
+   that place - with `:caption:` as the list's heading.
+4. **Write the whole tree in one go**, replacing the last build, so a page removed from the source
+   is removed from the site and a half-finished build never shows.
+5. **Report**: pages built, links that pointed at nothing, `toctree` entries with no file, syntax
+   left unconverted - on the admin screen after a Rebuild, and on the console after `docs:build`.
+
+## What is stored
+
+`dp_docs_page`: `path` (the address below the base, original case, unique), `title`, `parent_id`,
+`position`, `html` (rendered), `headings` (JSON: level, text, id), `source` (the file, relative),
+`source_hash` (so an unchanged file need not be re-rendered), `built_at`.
+
+## What a visitor gets
+
+- **`/docs/<path>`** - the page, drawn with the theme's page layout and a template of the plugin's
+  (`docs:page`, which a theme may override): **breadcrumbs** up the tree, the page, and
+  **previous / next** in the tree's reading order, as Sphinx's theme has.
+- **`/docs`** - the root `index.md`.
+- **The *Documentation tree* block**, placed in the sidebar: the tree, the branch of the current
+  page open, the page itself marked; draws nothing on a page that is not documentation.
+- **Internal links**: `docs#12`-style references are not needed - the source links by path, and
+  the build turns those into addresses.
+
+## The old addresses
+
+Sphinx published at **docs.dynart.net**, every page as `.html`, and those addresses are in
+bookmarks, search results and other people's pages. They map one to one, and each is answered
+with a **301 Moved Permanently**:
+
+| Sphinx | Docs plugin |
+|---|---|
+| `/dos-game-engine/BASICS/VGA.html` | `/docs/dos-game-engine/BASICS/VGA` |
+| `/dos-game-engine/index.html` | `/docs/dos-game-engine` |
+| `/index.html`, `/` | `/docs` |
+
+- **On docs.dynart.net**, which is another host than the blog, three lines of `.htaccess` do it and
+  nothing of Dpress runs there:
+
+  ```apache
+  RewriteEngine On
+  RewriteRule ^$                       https://gopherlab.net/docs [R=301,L]
+  RewriteRule ^(?:(.*)/)?index\.html$  https://gopherlab.net/docs/$1 [R=301,L]
+  RewriteRule ^(.*)\.html$             https://gopherlab.net/docs/$1 [R=301,L]
+  ```
+
+- **On the blog**, the plugin also accepts `.html` on its own addresses and answers it with a 301 to
+  the address without - so `gopherlab.net/docs/.../VGA.html`, which is what somebody rewriting an
+  old link by hand types, lands too. Were docs.dynart.net ever pointed at this install instead, the
+  same route answers the bare old paths.
+- **The `#fragment` of an old link survives** a 301 - the browser keeps it - but only lands if the
+  heading has the id Sphinx gave it. Dpress's renderer gives headings no ids, so the build adds them
+  **by Sphinx's rule**: lowercase, every run of characters that is not a letter or a digit one `-`,
+  none at either end - `## VGA Graphics` is `#vga-graphics`. A title repeated on one page is named
+  the way the existing `_build/html` shows, checked against it. `{#id}` in the source wins over the
+  generated one, as it does in MyST.
+
+## What the admin gets
+
+A **Documentation** section in the navigation, with: the source folder, the base path, the time
+and result of the last build, a **Rebuild** button, and the list of built pages (read-only, each
+with a View). The settings are in their own *Documentation* section of the Site tab.
+
+## On production
+
+The source folder has to be on the server: `docs-public` cloned with its submodules
+(`git submodule update --init --recursive`), then `dpress docs:build` after each pull - or the
+Rebuild button. The build reads only inside the folder it is given.
+
+## The order of work
+
+1. **Core:** `PluginInterface::commands()` - CLI commands from a plugin. **Done, Dpress 0.78.0.**
+2. **Plugin, the build:** the entity and migration, the tree walk, the MyST pre-pass, the render,
+   `docs:build`. Tested against `docs-public` itself. **Done** - and one construct the table above
+   missed, found by that: `{.numbered-header}`, classes with no id, which go on the heading.
+3. **Plugin, the site:** the route, the page template, breadcrumbs and previous/next, the tree block.
+4. **Plugin, the admin:** the section, the settings, Rebuild and its report.
+5. **Highlighter:** a Pascal language for EnlighterJS - separate, and it helps the blog's posts too.

@@ -1,0 +1,51 @@
+{
+    "name": "dynart/dpress-docs",
+    "description": "A documentation site for dpress from a folder of MyST Markdown.",
+    "type": "dpress-plugin",
+    "version": "0.1.0",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "gopher",
+            "email": "gopher.hu@gmail.com"
+        }
+    ],
+    "_comment": [
+        "Installing this plugin is dropping the folder into `plugins/` - dpress does not read this",
+        "file at all. A plugin is a folder with a `plugin.ini` in it, and the loader autoloads",
+        "`src/` from the namespace the manifest names.",
+        "",
+        "This is here for the tests, which need PHPUnit and need dpress's own classes to type",
+        "against. It resolves dpress out of the checkout three folders up, which is where it is on",
+        "the machine this is written on. Elsewhere, run the tests against a dpress checkout by",
+        "pointing that path at it - there is nothing to install for the plugin to *work*."
+    ],
+    "repositories": {
+        "dynart-local": {
+            "type": "path",
+            "url": "../../../dynart-{micro,micro-entities,dpress}",
+            "options": {
+                "symlink": true
+            }
+        }
+    },
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "dynart/dpress": "*",
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dynart\\Docs\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dynart\\Docs\\Test\\": "tests/"
+        }
+    }
+}
