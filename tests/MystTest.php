@@ -84,6 +84,16 @@ class MystTest extends TestCase {
         $this->assertSame($md, $this->convert($md)['markdown']);
     }
 
+    public function testAFenceWithNoLanguageIsText(): void {
+        $this->assertSame("```text\nEngine\n    ↓\n```", $this->convert("```\nEngine\n    ↓\n```")['markdown']);
+        $this->assertSame("  ~~~~text\nx\n  ~~~~", $this->convert("  ~~~~\nx\n  ~~~~")['markdown']);
+    }
+
+    public function testTheClosingFenceIsNotMistakenForABareOpening(): void {
+        $this->assertSame("```pascal\nx\n```\n\n```text\ny\n```",
+            $this->convert("```pascal\nx\n```\n\n```\ny\n```")['markdown']);
+    }
+
     // --- labels and roles ---
 
     public function testALabelLineGivesTheNextHeadingItsId(): void {

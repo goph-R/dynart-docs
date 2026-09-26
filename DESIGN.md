@@ -1,10 +1,10 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.3.0, on Dpress 0.79.0 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.3.1, on Dpress 0.80.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
-with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. Next:
-Pascal highlighting (step 5 below).
+with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. The
+Pascal in it is highlighted since Dpress 0.80.0. All five steps are done.
 
 A Dpress plugin that does what `sphinx-build` does for
 [docs-public](https://github.com/DynartInteractive/docs-public) - reads a folder of MyST Markdown,
@@ -143,6 +143,8 @@ Rebuild button. The build reads only inside the folder it is given.
 2. **Plugin, the build:** the entity and migration, the tree walk, the MyST pre-pass, the render,
    `docs:build`. Tested against `docs-public` itself. **Done** - and one construct the table above
    missed, found by that: `{.numbered-header}`, classes with no id, which go on the heading.
+   Later, from reading the pages: a fence with no language is built as `text`, so it is drawn in
+   the highlighter's box as Sphinx draws every literal block - not as the blog's plain `<pre>`.
 3. **Plugin, the site:** the route, the page template, breadcrumbs and previous/next, the tree block.
    **Done** - and one change to the framework it needed: the router tried catch-alls in the order
    they were added, so the site's `/*` took `/docs/*` too. A longer catch-all is tried first now
@@ -150,3 +152,4 @@ Rebuild button. The build reads only inside the folder it is given.
    theme's `entry-title`, keeping its id. A path in another case is a 301 to the real one.
 4. **Plugin, the admin:** the section, the settings, Rebuild and its report. **Done.**
 5. **Highlighter:** a Pascal language for EnlighterJS - separate, and it helps the blog's posts too.
+   **Done, in Dpress 0.80.0** - in the core, not here: `assets/enlighter/pascal.js`.

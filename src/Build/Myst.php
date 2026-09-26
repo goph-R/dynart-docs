@@ -34,6 +34,9 @@ class Myst {
     ];
 
     const FENCE = '/^(\s{0,3})(`{3,}|~{3,})(.*)$/';
+
+    /** The language a fence that names none is given - see `convert()` */
+    const BARE_FENCE = 'text';
     const HEADING = '/^\s{0,3}(#{1,6})\s+(.*?)\s*$/';
     /**
      * MyST's block attributes: `{#id}`, `{.class}`, `{#id .class .other}` - alone on the line
@@ -101,7 +104,11 @@ class Myst {
                     continue;
                 }
                 $fence = [$m[2][0], strlen($m[2])];
-                $out[] = $line;
+                // A fence with no language is `text`: Sphinx draws every literal block in the
+                // highlighter's box, and the blog renders a bare fence as a plain `<pre>` beside
+                // the boxed ones - a tree diagram looked like it belonged to another site.
+                // `text` is the highlighter's `raw`: the box, and no colours guessed at.
+                $out[] = $info === '' ? $m[1].$m[2].self::BARE_FENCE : $line;
                 continue;
             }
             if (preg_match(self::ATTRS_LINE, $line, $m)) {
