@@ -1,6 +1,6 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.3.1, on Dpress 0.80.0 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.3.2, on Dpress 0.80.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
 with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. The
@@ -77,9 +77,11 @@ What it does:
 
 - **`/docs/<path>`** - the page, drawn with the theme's page layout and a template of the plugin's
   (`docs:page`, which a theme may override): **breadcrumbs** up the tree, the page, and
-  **previous / next** in the tree's reading order, as Sphinx's theme has.
+  **previous / next** in the tree's reading order, as Sphinx's theme has - except on the root,
+  which is the contents: a reader chooses there, and "Next" would choose for them.
 - **`/docs`** - the root `index.md`.
-- **The *Documentation tree* block**, placed in the sidebar: the tree, the branch of the current
+- **The *Documentation tree* block**, placed in the sidebar: the root's chapters - not the root,
+  which the block's title stands for - the branch of the current
   page open, the page itself marked; draws nothing on a page that is not documentation. **On a
   documentation page it is alone in its place** - the tag cloud, the categories and the rest are
   the blog's way around, not the manual's. Through `block:before_render` (Dpress 0.79.0), so the

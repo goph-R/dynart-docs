@@ -10,8 +10,9 @@ use Dynart\Docs\Build\DocsBuilder;
 /**
  * The *Documentation tree* block: the way around the documentation, in the sidebar
  *
- * The top of the tree always, and below it only the branch the page being read is on - open
- * down to the page and one level under it, the page itself marked. A whole tree of fifty pages
+ * The root's chapters always, and below them only the branch the page being read is on - open
+ * down to the page and one level under it, the page itself marked. Not the root itself: that is
+ * the contents, and the block's title already says what the list is. A whole tree of fifty pages
  * in a sidebar is a list nobody reads.
  *
  * **Draws nothing on a page that is not documentation**, so it can sit in the sidebar every page
@@ -63,7 +64,6 @@ class DocsTreeBlock {
         $open[] = $page->id;
         return $this->view->fetch('docs:block/tree', [
             'items' => $this->items($children, $root['id'], $open, $page->id),
-            'root'  => $this->item($root, $page->id),
         ]);
     }
 

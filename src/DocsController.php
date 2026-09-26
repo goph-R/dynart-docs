@@ -103,7 +103,10 @@ class DocsController extends AbstractController {
     protected function renderPage(DocsPage $page): string {
         // for the tree block, which draws nothing on a page that is not documentation
         $this->context->set($page);
-        [$prev, $next] = $this->pages->neighbours($page->id);
+        // No way along from the root: it is the contents, and the contents is where a reader
+        // chooses - "Next" under it would pick the first chapter for them. The pages keep theirs,
+        // the first one's "Previous" included, which is the way back up to here.
+        [$prev, $next] = $page->path === '' ? [null, null] : $this->pages->neighbours($page->id);
         [$titleHtml, $bodyHtml] = self::splitTitle((string)$page->html);
         return $this->render('docs:page', [
             'title'      => $page->title,
