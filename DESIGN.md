@@ -1,8 +1,9 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build works** (plugin 0.1.0, on Dpress 0.78.0). `dpress docs:build` builds all 54
-pages `docs-public`'s toctrees reach, with **the heading ids of the Sphinx build on every one** -
-checked against its `_build/html`. Next: the public pages and the tree block (step 3 below).
+**Status: the build and the site work** (plugin 0.2.0, on Dpress 0.78.1 and dynart-micro 0.20.3).
+`dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
+the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
+with the old `.html` addresses answered by a 301. Next: the admin screen (step 4 below).
 
 A Dpress plugin that does what `sphinx-build` does for
 [docs-public](https://github.com/DynartInteractive/docs-public) - reads a folder of MyST Markdown,
@@ -134,5 +135,9 @@ Rebuild button. The build reads only inside the folder it is given.
    `docs:build`. Tested against `docs-public` itself. **Done** - and one construct the table above
    missed, found by that: `{.numbered-header}`, classes with no id, which go on the heading.
 3. **Plugin, the site:** the route, the page template, breadcrumbs and previous/next, the tree block.
+   **Done** - and one change to the framework it needed: the router tried catch-alls in the order
+   they were added, so the site's `/*` took `/docs/*` too. A longer catch-all is tried first now
+   (dynart-micro 0.20.3). A page's own `# Title` is taken out of its body and drawn as the
+   theme's `entry-title`, keeping its id. A path in another case is a 301 to the real one.
 4. **Plugin, the admin:** the section, the settings, Rebuild and its report.
 5. **Highlighter:** a Pascal language for EnlighterJS - separate, and it helps the blog's posts too.

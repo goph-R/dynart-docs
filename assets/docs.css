@@ -1,0 +1,10 @@
+/* The Docs plugin's shapes, and only shapes: colours and faces are the theme's. */
+
+.docs-tree-root { margin: 0 0 8px; }
+.docs-tree [aria-current="page"] { font-weight: 700; }
+
+/* previous and next carry page titles rather than "Previous" and "Next", so either may be long:
+   each takes at most half the row, and Next stays on the right when it is alone */
+.docs-pager { justify-content: space-between; flex-wrap: nowrap; }
+.docs-pager a { max-width: 50%; }
+.docs-pager .page-next { margin-left: auto; text-align: right; }

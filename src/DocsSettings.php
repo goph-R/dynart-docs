@@ -35,7 +35,7 @@ class DocsSettings {
                 'section'     => Docs::SECTION,
                 'url'         => $this->router->url('/admin/docs/build'),
                 'status'      => $this->statusText(),
-                'description' => 'Builds the documentation from the saved source folder - if you have just changed it, save first.',
+                'description' => 'Builds the documentation from the saved source folder - if you have just changed the settings, save first.',
             ],
         ], false);
     }

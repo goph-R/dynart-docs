@@ -4,6 +4,7 @@ namespace Dynart\Docs;
 
 use Dynart\Micro\EventServiceInterface;
 use Dynart\Micro\Micro;
+use Dynart\Micro\RouterInterface;
 use Dynart\Dpress\Form\AdminForms;
 use Dynart\Dpress\Form\FormFactory;
 use Dynart\Dpress\Plugin\AbstractPlugin;
@@ -25,11 +26,14 @@ class DocsPlugin extends AbstractPlugin {
             DocsBuilder::class => DocsBuilder::class,
             DocsCommands::class => DocsCommands::class,
             DocsSettings::class => DocsSettings::class,
+            DocsPages::class => DocsPages::class,
+            DocsContext::class => DocsContext::class,
+            DocsTreeBlock::class => DocsTreeBlock::class,
         ];
     }
 
     public function controllers(): array {
-        return [DocsAdminController::class];
+        return [DocsAdminController::class, DocsController::class];
     }
 
     public function views(): array {
@@ -39,6 +43,22 @@ class DocsPlugin extends AbstractPlugin {
     /** The Build button's widget, in the settings - see `DocsSettings` */
     public function widgets(): array {
         return [DocsSettings::FIELD => 'docs:widget/build'];
+    }
+
+    /** The tree, in whichever place a site puts it - it draws only on a documentation page */
+    public function blocks(): array {
+        return [
+            'docs_tree' => [
+                'title'  => 'Documentation tree',
+                'render' => [DocsTreeBlock::class, 'render'],
+                'fields' => [],
+            ],
+        ];
+    }
+
+    /** `data-docs` is on the documentation page and on the tree, and nowhere else */
+    public function pageAssets(): array {
+        return ['docs.css' => 'data-docs'];
     }
 
     public function entities(): array {
@@ -61,11 +81,26 @@ class DocsPlugin extends AbstractPlugin {
 
     public function register(): void {
         $this->registerSettings();
+        $this->registerRoutes();
         // the Build button, after the section's two settings
         Micro::get(EventServiceInterface::class)->subscribe(
             FormFactory::eventName(AdminForms::SETTINGS),
             [DocsSettings::class, 'onSettingsForm']
         );
+    }
+
+    /**
+     * `/docs` and everything under it, wherever the setting puts them
+     *
+     * Here rather than in `#[Route]`s, which are constants, and the address is a setting.
+     * `DocsController` is registered after this returns, and a route names its class, not an
+     * instance, so the order does not matter.
+     */
+    protected function registerRoutes(): void {
+        $base = Micro::get(DocsBuilder::class)->base();
+        $router = Micro::get(RouterInterface::class);
+        $router->add('/'.$base, [DocsController::class, 'root']);
+        $router->add('/'.$base.'/*', [DocsController::class, 'page']);
     }
 
     /**

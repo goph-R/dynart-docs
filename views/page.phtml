@@ -1,0 +1,45 @@
+<?php
+/**
+ * A documentation page - drawn like a page of the site, with the way up and the way along
+ *
+ * A theme overrides this at `docs/page.phtml`. The markup is the core page's - `breadcrumb`,
+ * `entry-title`, `entry-content` - so a theme that styles a page styles this without knowing
+ * the plugin exists.
+ *
+ * Expects: $page (`DocsPage`), $title_html (the page's own heading, or ''), $body_html,
+ * $ancestors (rows with `title`, `url`, the root first), $prev / $next (a row, or null),
+ * $headings (`level`, `text`, `id`, for a theme that wants an "on this page" list).
+ */
+?>
+<?php $this->useLayout($layout ?? 'dpress:layout') ?>
+<?php $this->startBlock('content') ?>
+    <?php if (!empty($ancestors)): ?>
+        <nav class="breadcrumb">
+            <?php foreach ($ancestors as $i => $ancestor): ?>
+                <?= $i > 0 ? ' / ' : '' ?><a href="<?= esc_attr($ancestor['url']) ?>"><?= esc_html($ancestor['title']) ?></a>
+            <?php endforeach ?>
+        </nav>
+    <?php endif ?>
+    <?php // `data-docs` is what puts the plugin's stylesheet on the page - see `pageAssets()` ?>
+    <article class="docs-page" data-docs>
+        <?php if ($title_html !== ''): ?>
+            <?= $title_html ?>
+        <?php else: ?>
+            <h1 class="entry-title"><?= esc_html($page->title) ?></h1>
+        <?php endif ?>
+        <div class="entry-content">
+            <?= $body_html ?>
+        </div>
+        <?php if ($prev !== null || $next !== null): ?>
+            <nav class="page-nav docs-pager" aria-label="Documentation pages">
+                <?php if ($prev !== null): ?>
+                    <a class="page-prev" href="<?= esc_attr($prev['url']) ?>" rel="prev">&larr; <?= esc_html($prev['title']) ?></a>
+                <?php endif ?>
+                <?php if ($next !== null): ?>
+                    <a class="page-next" href="<?= esc_attr($next['url']) ?>" rel="next"><?= esc_html($next['title']) ?> &rarr;</a>
+                <?php endif ?>
+            </nav>
+        <?php endif ?>
+    </article>
+    <?= $places->render('after_content') ?>
+<?php $this->endBlock() ?>

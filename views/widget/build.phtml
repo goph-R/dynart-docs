@@ -11,6 +11,6 @@
 ?>
 <div class="docs-build">
     <button type="button" class="button with-icon"
-            onclick="Dpress.post(<?= esc_attr(json_encode((string)($field['url'] ?? ''))) ?>)"><?= \Dynart\Dpress\Dpress::icon('upload') ?> Build now</button>
+            onclick="Dpress.post(<?= esc_attr(json_encode((string)($field['url'] ?? ''))) ?>)"><?= \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg') ?> Build now</button>
     <span class="form-description" style="display: inline; margin-left: 10px;"><?= esc_html((string)($field['status'] ?? '')) ?></span>
 </div>

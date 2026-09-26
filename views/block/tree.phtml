@@ -1,0 +1,20 @@
+<?php
+/**
+ * The documentation tree - see `DocsTreeBlock`
+ *
+ * Nested lists, as the core's category block draws its tree, so a sidebar that styles one
+ * styles this. The page being read is a `<strong>` with `aria-current`, not a link to itself.
+ *
+ * Expects: $root (`title`, `url`, `current`), $items (the same, with `children`).
+ */
+?>
+<nav class="docs-tree" data-docs aria-label="Documentation">
+    <p class="docs-tree-root">
+        <?php if ($root['current']): ?>
+            <strong aria-current="page"><?= esc_html($root['title']) ?></strong>
+        <?php else: ?>
+            <a href="<?= esc_attr($root['url']) ?>"><?= esc_html($root['title']) ?></a>
+        <?php endif ?>
+    </p>
+    <?= $this->fetch('docs:block/tree-items', ['items' => $items]) ?>
+</nav>

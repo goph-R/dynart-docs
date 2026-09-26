@@ -1,0 +1,15 @@
+<?php /** One level of the documentation tree. Recurses down the open branch. */ ?>
+<ul>
+    <?php foreach ($items as $item): ?>
+        <li class="<?= $item['has_children'] ? 'has-children' : '' ?><?= !empty($item['children']) ? ' is-open' : '' ?>">
+            <?php if ($item['current']): ?>
+                <strong aria-current="page"><?= esc_html($item['title']) ?></strong>
+            <?php else: ?>
+                <a href="<?= esc_attr($item['url']) ?>"><?= esc_html($item['title']) ?></a>
+            <?php endif ?>
+            <?php if (!empty($item['children'])): ?>
+                <?= $this->fetch('docs:block/tree-items', ['items' => $item['children']]) ?>
+            <?php endif ?>
+        </li>
+    <?php endforeach ?>
+</ul>
