@@ -26,6 +26,9 @@ class Docs {
      */
     const LAST_BUILD = 'docs_last_build';
 
+    /** Whether a build first pulls the source folder with git - see `SourceUpdater` */
+    const GIT_PULL = 'docs_git_pull';
+
     /** The admin navigation's key for the Documentation screen */
     const ADMIN_SECTION = 'docs';
 }

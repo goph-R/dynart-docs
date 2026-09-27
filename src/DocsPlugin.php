@@ -26,6 +26,7 @@ class DocsPlugin extends AbstractPlugin {
     public function services(): array {
         return [
             DocsBuilder::class => DocsBuilder::class,
+            Build\SourceUpdater::class => Build\SourceUpdater::class,
             DocsCommands::class => DocsCommands::class,
             DocsSettings::class => DocsSettings::class,
             DocsPages::class => DocsPages::class,
@@ -140,6 +141,14 @@ class DocsPlugin extends AbstractPlugin {
             'type' => 'text', 'label' => 'Address', 'required' => false,
             'section' => Docs::SECTION,
             'description' => 'What the documentation lives under - docs is /docs/... - . Rebuild after changing it.',
+        ]);
+        $fields->add(Docs::GIT_PULL, 'bool', [
+            'type' => 'checkbox', 'label' => 'Update', 'required' => false,
+            'section' => Docs::SECTION,
+            'text' => 'Pull the source folder with git before every build',
+            'description' => 'For a source folder that is a git clone: a build first runs git pull and updates its'
+                .' submodules. The web server\'s user has to own the folder, and the clone has to reach its'
+                .' remote without a password - an https:// address for a public repository.',
         ]);
     }
 }

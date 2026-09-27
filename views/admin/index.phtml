@@ -25,7 +25,8 @@ $hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg
     <div class="panel docs-status">
         <dl>
             <dt>Source folder</dt>
-            <dd><?= $source !== '' ? '<code>'.esc_html($source).'</code>' : 'Not set - the Settings has it, in the Documentation section.' ?></dd>
+            <dd><?= $source !== '' ? '<code>'.esc_html($source).'</code>' : 'Not set - the Settings has it, in the Documentation section.' ?><?=
+                    !empty($pulls) ? ' - pulled with git before every build' : '' ?></dd>
             <dt>Address</dt>
             <dd><a href="<?= esc_attr($public_url) ?>"><?= esc_html($public_url) ?></a></dd>
             <dt>Last build</dt>
@@ -33,6 +34,9 @@ $hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg
                 <?php if ($last === null): ?>
                     Not built yet.
                 <?php else: ?>
+                    <?php if (!empty($last['update'])): ?>
+                        <?= esc_html((string)$last['update']) ?><br>
+                    <?php endif ?>
                     <?= esc_html(substr((string)$last['at'], 0, 16)) ?> UTC -
                     <?= (int)$last['pages'] > 0 ? (int)$last['pages'].' page(s)' : 'nothing was built' ?><?=
                         empty($last['problems']) ? ', no problems.' : ', '.(count($last['problems']) + (int)($last['more'] ?? 0)).' thing(s) to look at:' ?>

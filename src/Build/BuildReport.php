@@ -16,6 +16,9 @@ class BuildReport {
 
     public int $pages = 0;
 
+    /** What updating the source with git did, in one line - '' when it was not asked to */
+    public string $update = '';
+
     public function problem(string $file, string $message): void {
         $this->problems[] = ['file' => $file, 'message' => $message];
     }

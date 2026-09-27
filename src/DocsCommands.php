@@ -30,6 +30,9 @@ class DocsCommands {
             ? rtrim((string)$params['source'], '/\\') : null;
         $this->output->writeLine('Building from '.($folder ?? $this->builder->sourceFolder()).' ...');
         $report = $this->builder->build($folder);
+        if ($report->update !== '') {
+            $this->output->writeLine($report->update);
+        }
         foreach ($report->problems as $problem) {
             $this->output->setColor(CliOutput::YELLOW);
             $this->output->write('  '.($problem['file'] !== '' ? $problem['file'].': ' : ''));

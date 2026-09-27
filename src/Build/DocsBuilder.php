@@ -36,6 +36,7 @@ class DocsBuilder {
         protected MarkdownRenderer $markdown,
         protected EntityManager $em,
         protected Database $db,
+        protected SourceUpdater $updater,
     ) {}
 
     /** The source folder the setting names, as a path on this machine, or '' when none is set */
@@ -92,15 +93,24 @@ class DocsBuilder {
         return is_array($last) && isset($last['at']) ? $last + ['pages' => 0, 'problems' => []] : null;
     }
 
-    /** Builds, and keeps how it went for `lastBuild()` */
+    /**
+     * Builds, and keeps how it went for `lastBuild()`
+     *
+     * With the *Update* setting on, the source is pulled with git first. A pull that fails is a
+     * problem in the report and **not** the end of the build: what is in the folder is still the
+     * last good source, and building it is no worse than not.
+     */
     public function build(?string $folder = null): BuildReport {
-        $report = $this->run($folder);
+        $report = new BuildReport();
+        $this->updateSource($folder ?? $this->sourceFolder(), $report);
+        $this->run($folder, $report);
         $this->settings->set(Docs::LAST_BUILD, json_encode([
             'at'       => gmdate('Y-m-d H:i:s'),
             'pages'    => $report->pages,
             // a broken source can have a problem on every line; a screen needs the first ones
             'problems' => array_slice($report->problems, 0, self::KEEP_PROBLEMS),
             'more'     => max(0, count($report->problems) - self::KEEP_PROBLEMS),
+            'update'   => $report->update,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         return $report;
     }
@@ -108,8 +118,26 @@ class DocsBuilder {
     /** How many of a build's problems `lastBuild()` keeps */
     const KEEP_PROBLEMS = 50;
 
-    protected function run(?string $folder): BuildReport {
-        $report = new BuildReport();
+    /** Whether a build pulls the source with git first */
+    public function pulls(): bool {
+        return $this->settings->getBool(Docs::GIT_PULL, false);
+    }
+
+    /** The git pull a build starts with, when the setting asks for one */
+    protected function updateSource(string $folder, BuildReport $report): void {
+        if (!$this->pulls() || $folder === '' || !is_dir($folder)) {
+            return;   // no folder is a problem the build itself reports
+        }
+        $result = $this->updater->update($folder);
+        if ($result['ok']) {
+            $report->update = $result['message'];
+        } else {
+            // a problem rather than the update line, so it is listed where problems are read
+            $report->problem('', 'The source was not updated, so this is the last one pulled. '.$result['message']);
+        }
+    }
+
+    protected function run(?string $folder, BuildReport $report): BuildReport {
         $folder = $folder ?? $this->sourceFolder();
         if ($folder === '' || !is_dir($folder)) {
             $report->problem('', $folder === ''

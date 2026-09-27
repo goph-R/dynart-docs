@@ -1,6 +1,6 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.3.2, on Dpress 0.80.0 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.4.0, on Dpress 0.80.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
 with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. The
@@ -138,6 +138,22 @@ good pages up, and the screen has to say both.
 The source folder has to be on the server: `docs-public` cloned with its submodules
 (`git submodule update --init --recursive`), then `dpress docs:build` after each pull - or the
 Rebuild button. The build reads only inside the folder it is given.
+
+**Or the build pulls it** (0.4.0): with *Update* on in the Documentation settings, a build - the
+button's, or `dpress docs:build` from a cron job - first runs `git pull --ff-only
+--recurse-submodules` and `git submodule update --init --recursive` in the source folder
+(`SourceUpdater`). What it did is the first line of the build's report: "updated from a to b",
+"up to date", or - as a problem, with the build going ahead on what is there - git's own
+`fatal:` line.
+
+- **The web server's user has to own the folder**, since that is who runs git from the button:
+  `chown -R www-data: /var/www/docs-public`.
+- **The remotes have to need no password**: `https://` for public repositories - the submodules
+  too, whose `.gitmodules` addresses are `git@github.com:` and are overridden in the clone's own
+  config. Git is told there is nobody to ask, so a missing credential fails at once rather than
+  hanging the request.
+- **`--ff-only`**, because the server's copy is a mirror: an edit made there stops the pull with
+  "Not possible to fast-forward" instead of becoming a merge commit on the server.
 
 ## The order of work
 

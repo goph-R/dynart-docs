@@ -57,6 +57,7 @@ class DocsAdminController extends AbstractAdminController {
         return $this->admin('docs:admin/index', [
             'title'      => 'Documentation',
             'source'     => $this->builder->sourceFolder(),
+            'pulls'      => $this->builder->pulls(),
             'public_url' => $this->router->url($this->builder->route('')),
             'last'       => $this->builder->lastBuild(),
             'status'     => $this->builder->status(),
@@ -124,10 +125,12 @@ class DocsAdminController extends AbstractAdminController {
         );
         $more = count($report->problems) - count($problems);
         $tail = $problems === [] ? '' : ' '.implode(' ', $problems).($more > 0 ? " And $more more - dpress docs:build lists them all." : '');
+        // what the git pull did, first - it is what decided which source this was built from
+        $update = $report->update !== '' ? $report->update.' ' : '';
         if ($report->pages === 0) {
-            return 'Nothing was built.'.$tail;
+            return $update.'Nothing was built.'.$tail;
         }
-        return "Built {$report->pages} page(s) under /".$this->builder->base().'.'
+        return $update."Built {$report->pages} page(s) under /".$this->builder->base().'.'
             .($problems === [] ? '' : ' '.count($report->problems).' thing(s) to look at:'.$tail);
     }
 }
