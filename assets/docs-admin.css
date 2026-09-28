@@ -9,3 +9,25 @@
     .docs-status dl { grid-template-columns: 1fr; gap: 2px; }
     .docs-status dd { margin-bottom: 10px; }
 }
+
+/* files that differ from the remote - on the Documentation screen and above the editor */
+.docs-git-warning { margin-bottom: 18px; }
+.docs-changed { margin: 8px 0 0; padding-left: 18px; }
+.docs-source-file { margin: 0 0 12px; }
+
+/* the page tree, folded - `docs-admin.js`. The button is an arrow drawn in CSS, pointing right
+   when the pages under it are folded away and down when they show */
+.docs-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0; margin: 0 4px 0 0; vertical-align: middle;
+    background: none; border: 0; color: var(--muted); cursor: pointer;
+}
+.docs-toggle::before {
+    content: ''; border: 5px solid transparent; border-left: 6px solid currentColor; border-right: 0;
+    transition: transform .12s ease;
+}
+.docs-toggle[aria-expanded="true"]::before { transform: rotate(90deg); }
+.docs-toggle:hover { color: var(--ink); }
+.docs-toggle:disabled { cursor: default; opacity: .6; }
+/* a page with nothing under it gets the button's room, so every title starts in the same column */
+.docs-toggle-space { display: inline-block; width: 24px; }

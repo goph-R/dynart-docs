@@ -29,6 +29,12 @@ class Docs {
     /** Whether a build first pulls the source folder with git - see `SourceUpdater` */
     const GIT_PULL = 'docs_git_pull';
 
+    /** Who may change a page's source from the admin */
+    const PERMISSION_EDIT = 'docs.edit';
+
+    /** The editor's form - see `DocsForms` */
+    const FORM_PAGE = 'docs_page';
+
     /** The admin navigation's key for the Documentation screen */
     const ADMIN_SECTION = 'docs';
 }

@@ -14,12 +14,15 @@ use Dynart\Dpress\Query\ListRequest;
 use Dynart\Dpress\Security\Permissions;
 use Dynart\Docs\Build\BuildReport;
 use Dynart\Docs\Build\DocsBuilder;
+use Dynart\Docs\Build\SourceStatus;
+use Dynart\Dpress\DpressException;
 
 /**
  * The Documentation screen: where the pages come from, how the last build went, and the tree
  *
- * Read-only apart from Build. The pages are the source folder's, so there is nothing to edit
- * here - a change is made in the Markdown and built.
+ * Build, and an editor for a page's source file (`edit()`): it writes the Markdown back into the
+ * source folder and rebuilds. It does not commit - so every page shows whether its file differs
+ * from the remote, and the editor says it should be committed while it does (`SourceStatus`).
  *
  * Behind the permission that reads the settings, since everything it shows is what two
  * settings and the last build made of them.
@@ -39,6 +42,7 @@ class DocsAdminController extends AbstractAdminController {
         ListRequest $list,
         protected DocsBuilder $builder,
         protected DocsPages $pages,
+        protected SourceStatus $sourceStatus,
     ) {
         parent::__construct($view, $router, $request, $config, $jwtAuth, $forms, $list);
     }
@@ -54,6 +58,11 @@ class DocsAdminController extends AbstractAdminController {
     public function index(): string {
         $this->requirePermission(Permissions::SETTING_VIEW);
         $canBuild = $this->can(Permissions::SETTING_UPDATE);
+        $rowActions = [];
+        if ($this->can(Docs::PERMISSION_EDIT)) {
+            $rowActions[] = ['title' => 'Edit', 'icon' => $this->icon('edit'), 'link' => 'edit_url'];
+        }
+        $rowActions[] = ['title' => 'View', 'icon' => $this->icon('eye'), 'link' => 'view_url'];
         return $this->admin('docs:admin/index', [
             'title'      => 'Documentation',
             'source'     => $this->builder->sourceFolder(),
@@ -64,14 +73,16 @@ class DocsAdminController extends AbstractAdminController {
             'build_url'  => $canBuild ? $this->router->url('/admin/docs/build', ['back' => 'docs']) : '',
             'settings_url' => $this->router->url('/admin/settings'),
             'rows'       => $this->treeRows(),
+            // git is asked after the screen is drawn - see `changes()`
+            'changes_url' => $this->router->url('/admin/docs/changes'),
             'columns'    => [
-                'title'  => ['label' => 'Title', 'tree' => true, 'link' => 'view_url'],
+                'title'  => ['label' => 'Title', 'tree' => true,
+                             'link' => $this->can(Docs::PERMISSION_EDIT) ? 'edit_url' : 'view_url'],
                 'path'   => ['label' => 'Address'],
                 'source' => ['label' => 'Source'],
+                'git'    => ['label' => '', 'view' => 'html'],
             ],
-            'row_actions' => [
-                ['title' => 'View', 'icon' => $this->icon('eye'), 'link' => 'view_url'],
-            ],
+            'row_actions' => $rowActions,
         ]);
     }
 
@@ -91,12 +102,104 @@ class DocsAdminController extends AbstractAdminController {
                     'path'      => '/'.ltrim($this->builder->route($row['path']), '/'),
                     'source'    => $row['source'],
                     'view_url'  => $this->router->url($this->builder->route($row['path'])),
+                    'edit_url'  => $this->router->url('/admin/docs/edit', ['file' => $row['source']]),
+                    'git'       => '',   // filled in by docs-admin.js
                 ];
                 $walk($row['id'], $depth + 1);
             }
         };
         $walk(0, 0);
         return $rows;
+    }
+
+    /**
+     * What differs from the remote, for the screen that asked - fetched by `docs-admin.js`
+     *
+     * Its own request so the list and the editor never wait for git: the screen is drawn at once,
+     * and the warning and the tree's badges arrive a moment later. JSON, with the warning already
+     * rendered so its words and markup stay in a template.
+     */
+    #[Route('GET', '/admin/docs/changes')]
+    public function changes(): array {
+        if (!$this->can(Permissions::SETTING_VIEW) && !$this->can(Docs::PERMISSION_EDIT)) {
+            $this->app()->sendError(403);
+        }
+        $changes = $this->sourceStatus->changes($this->builder->sourceFolder());
+        return [
+            'badges' => array_filter(array_map(fn(string $state) => self::gitBadge($state), $changes ?? [])),
+            'html'   => $this->view->fetch('docs:admin/changes', [
+                'changes' => $changes,
+                'file'    => (string)$this->request->get('file', ''),
+            ]),
+        ];
+    }
+
+    /** What the tree says about a page's file: nothing, or that it differs from the remote */
+    public static function gitBadge(?string $state): string {
+        return match ($state) {
+            SourceStatus::UNCOMMITTED => '<span class="badge badge-draft">not committed</span>',
+            SourceStatus::UNPUSHED    => '<span class="badge badge-draft">not pushed</span>',
+            default                   => '',
+        };
+    }
+
+    /**
+     * A page's source file, in the Markdown editor
+     *
+     * The file is found through the page the build made of it - `?file=` is only ever looked up,
+     * never opened as a path - so what can be edited is exactly what the site publishes.
+     *
+     * **Saving writes the file and rebuilds, and nothing more**: no commit and no push, so the
+     * screen says - above the editor, for as long as it is true - that the file differs from the
+     * remote and should be committed. The rebuild does not pull, which could only get in the way
+     * of the edit it was made for.
+     */
+    #[Route('GET', '/admin/docs/edit')]
+    #[Route('POST', '/admin/docs/edit')]
+    public function edit(): string {
+        $this->requirePermission(Docs::PERMISSION_EDIT);
+        $source = (string)$this->request->get('file', '');
+        $page = $source !== '' ? $this->pages->findBySource($source) : null;
+        if ($page === null) {
+            $this->app()->sendError(404);
+        }
+        $files = new SourceFiles($this->builder->sourceFolder());
+        try {
+            $text = $files->read($source);
+        } catch (DpressException $e) {
+            $this->done('/admin/docs', $e->getMessage());
+            return '';
+        }
+        // registered here rather than in `register()`: the form factory is the web app's, and a
+        // plugin that asked for it while loading failed to load in every `dpress` command
+        if (!$this->forms->has(Docs::FORM_PAGE)) {
+            $this->forms->add(Docs::FORM_PAGE, [DocsForms::class, 'page']);
+        }
+        $form = $this->forms->create(Docs::FORM_PAGE, ['markdown' => $text, 'hash' => SourceFiles::hash($text)]);
+        if ($form->process()) {
+            $values = $form->values();
+            try {
+                $written = $files->write($source, (string)$values['markdown'], (string)$values['hash']);
+            } catch (DpressException $e) {
+                $form->addFieldError('markdown', $e->getMessage());
+                return $this->editor($page, $source, $form);
+            }
+            $notice = $written ? 'Saved. '.$this->summary($this->builder->build(null, false)) : 'Nothing changed.';
+            $this->done('/admin/docs/edit', $notice, ['file' => $source]);
+            return '';
+        }
+        return $this->editor($page, $source, $form);
+    }
+
+    protected function editor(\Dynart\Docs\Entity\DocsPage $page, string $source, $form): string {
+        return $this->admin('docs:admin/edit', [
+            'title'    => $page->title,
+            'source'   => $source,
+            'changes_url' => $this->router->url('/admin/docs/changes', ['file' => $source]),
+            'form'     => $form,
+            'view_url' => $this->router->url($this->builder->route($page->path)),
+            'back_url' => $this->router->url('/admin/docs'),
+        ]);
     }
 
     /**

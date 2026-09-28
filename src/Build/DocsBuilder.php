@@ -99,10 +99,15 @@ class DocsBuilder {
      * With the *Update* setting on, the source is pulled with git first. A pull that fails is a
      * problem in the report and **not** the end of the build: what is in the folder is still the
      * last good source, and building it is no worse than not.
+     *
+     * `$pull = false` for the build after a save in the editor: that edit is not committed, and a
+     * pull straight after it could only get in its way.
      */
-    public function build(?string $folder = null): BuildReport {
+    public function build(?string $folder = null, bool $pull = true): BuildReport {
         $report = new BuildReport();
-        $this->updateSource($folder ?? $this->sourceFolder(), $report);
+        if ($pull) {
+            $this->updateSource($folder ?? $this->sourceFolder(), $report);
+        }
         $this->run($folder, $report);
         $this->settings->set(Docs::LAST_BUILD, json_encode([
             'at'       => gmdate('Y-m-d H:i:s'),
@@ -156,6 +161,11 @@ class DocsBuilder {
         $labels = [];
         foreach ($nodes as $docname => $node) {
             $sources[$docname] = (string)file_get_contents($folder.'/'.$node['file']);
+            if (preg_match('//u', $sources[$docname]) !== 1) {
+                // the renderer refuses anything else, and would take the whole build down with it
+                $report->problem($node['file'], 'The file is not valid UTF-8; the bytes that are not were replaced.');
+                $sources[$docname] = mb_scrub($sources[$docname], 'UTF-8');
+            }
             $titles[$docname] = self::rawTitle($sources[$docname]) ?? basename($docname);
             foreach (Myst::labels($sources[$docname]) as $key => $label) {
                 if (isset($labels[$key])) {

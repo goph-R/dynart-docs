@@ -1,0 +1,39 @@
+<?php
+/**
+ * What differs from the remote, as the warning above the Documentation list or the editor
+ *
+ * Rendered by `DocsAdminController::changes()` and fetched by `docs-admin.js` once the screen is
+ * drawn: asking git takes a few processes, and the list should not wait for them.
+ *
+ * Expects: $changes (file => `SourceStatus` state, or null when the source is not a clone), and
+ * $file - the editor's file, or '' for the whole list.
+ */
+use Dynart\Docs\Build\SourceStatus;
+
+$state = $file !== '' ? ($changes[$file] ?? null) : null;
+?>
+<?php if ($file !== ''): ?>
+    <?php if ($state === SourceStatus::UNCOMMITTED): ?>
+        <div class="warning docs-git-warning">
+            <strong>This file is changed here and not committed.</strong>
+            Commit and push it from the server's clone of the repository. Until then the change exists
+            only on this server: a fresh clone would not have it, and the next pull can refuse to run
+            while it is in the way.
+        </div>
+    <?php elseif ($state === SourceStatus::UNPUSHED): ?>
+        <div class="warning docs-git-warning">
+            <strong>This file is committed here and not pushed.</strong>
+            Push it from the server's clone of the repository - until then the change exists only on this server.
+        </div>
+    <?php endif ?>
+<?php elseif (!empty($changes)): ?>
+    <div class="warning docs-git-warning">
+        <strong><?= count($changes) ?> file(s) of the source differ from the remote</strong> - commit and push
+        them from the server's clone of the repository, or they exist only on this server:
+        <ul class="docs-changed">
+            <?php foreach ($changes as $changed => $changedState): ?>
+                <li><code><?= esc_html($changed) ?></code> - <?= $changedState === SourceStatus::UNPUSHED ? 'not pushed' : 'not committed' ?></li>
+            <?php endforeach ?>
+        </ul>
+    </div>
+<?php endif ?>

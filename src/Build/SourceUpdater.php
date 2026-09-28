@@ -23,10 +23,6 @@ namespace Dynart\Docs\Build;
  */
 class SourceUpdater {
 
-    /** Below this many bytes a second, for `LOW_SPEED_TIME` seconds, git gives up on a fetch */
-    const LOW_SPEED_LIMIT = 1000;
-    const LOW_SPEED_TIME = 30;
-
     /** How much of git's own output a failure reports - its last lines are the ones that say why */
     const OUTPUT_LINES = 4;
 
@@ -34,10 +30,10 @@ class SourceUpdater {
      * @return array{ok: bool, message: string} one line either way: what changed, or why not
      */
     public function update(string $folder): array {
-        if (!function_exists('proc_open')) {
+        if (!Git::available()) {
             return self::failed('PHP cannot run git here: proc_open is disabled.');
         }
-        if (!file_exists($folder.'/.git')) {
+        if (!Git::isClone($folder)) {
             return self::failed("$folder is not a git clone.");
         }
         [, $before] = $this->git($folder, ['rev-parse', '--short', 'HEAD']);
@@ -61,35 +57,9 @@ class SourceUpdater {
         ];
     }
 
-    /**
-     * One git command in the folder, its exit code and everything it printed
-     *
-     * @return array{0: int, 1: string}
-     */
+    /** One git command in the folder - see `Git` */
     protected function git(string $folder, array $arguments): array {
-        $process = proc_open(
-            array_merge(['git', '-C', $folder], $arguments),
-            // one stream for both, so neither can fill up and stall git while the other is read
-            [1 => ['pipe', 'w'], 2 => ['redirect', 1]],
-            $pipes,
-            $folder,
-            self::environment()
-        );
-        if (!is_resource($process)) {
-            return [-1, 'git could not be started.'];
-        }
-        $output = (string)stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        return [proc_close($process), $output];
-    }
-
-    /** What git runs with: this process's own environment, and nobody to ask for a password */
-    protected static function environment(): array {
-        return array_merge(getenv(), [
-            'GIT_TERMINAL_PROMPT'      => '0',
-            'GIT_HTTP_LOW_SPEED_LIMIT' => (string)self::LOW_SPEED_LIMIT,
-            'GIT_HTTP_LOW_SPEED_TIME'  => (string)self::LOW_SPEED_TIME,
-        ]);
+        return (new Git())->run($folder, $arguments);
     }
 
     /**

@@ -6,7 +6,8 @@
  * toctrees, and it changes where they are written.
  *
  * Expects: $source, $public_url, $last (`lastBuild()`, or null), $status (`status()`),
- * $build_url ('' without the permission), $settings_url, $rows, $columns, $row_actions.
+ * $build_url ('' without the permission), $settings_url, $rows, $columns, $row_actions,
+ * $changes_url (where `docs-admin.js` asks git what differs from the remote).
  */
 $hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg');
 ?>
@@ -21,6 +22,9 @@ $hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg
                     onclick="Dpress.post(<?= esc_attr(json_encode($build_url)) ?>)"><?= $hammer ?> Build now</button>
         <?php endif ?>
     </div>
+
+    <?php // filled in by docs-admin.js: every file that differs from the remote, and the tree's badges ?>
+    <div data-docs-changes="<?= esc_attr($changes_url) ?>"></div>
 
     <div class="panel docs-status">
         <dl>
@@ -59,10 +63,20 @@ $hammer = \Dynart\Dpress\Dpress::iconFile(dirname(__DIR__, 2).'/icons/hammer.svg
         </dl>
     </div>
 
-    <?= $this->fetch('dpress_admin:tree', [
-        'rows'       => $rows,
-        'columns'    => $columns,
-        'rowActions' => $row_actions,
-        'empty'      => 'Nothing is built yet.',
-    ]) ?>
+    <?php // `docs-admin.js` folds the tree to its chapters and filters it by the search - without it,
+          // the whole tree is here, open, which is what it was before either existed ?>
+    <div class="docs-pages" data-docs-tree>
+        <?php if (!empty($rows)): ?>
+            <div class="filters">
+                <input type="search" placeholder="Search pages by title or file" aria-label="Search pages"
+                       data-docs-tree-search autocomplete="off">
+            </div>
+        <?php endif ?>
+        <?= $this->fetch('dpress_admin:tree', [
+            'rows'       => $rows,
+            'columns'    => $columns,
+            'rowActions' => $row_actions,
+            'empty'      => 'Nothing is built yet.',
+        ]) ?>
+    </div>
 <?php $this->endBlock() ?>

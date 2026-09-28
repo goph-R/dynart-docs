@@ -1,6 +1,6 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.4.0, on Dpress 0.80.0 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.5.0, on Dpress 0.80.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
 with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. The
@@ -126,8 +126,37 @@ with a **301 Moved Permanently**:
 
 A **Documentation** section in the navigation, after Pages, with: the source folder, the address,
 the time and result of the last build - its problems listed - a **Build now** button, and the tree
-of built pages (read-only, each with a View). The settings are in their own *Documentation* section
+of built pages, each with a View. The settings are in their own *Documentation* section
 of the Site tab, which has a Build button too; each goes back to the screen it was pressed on.
+
+**Editing a page's source** (0.5.0): with the `docs.edit` permission, a page's title - and an Edit
+action beside its View - opens its source file in the Markdown editor, its lines numbered (a wrapped
+line keeps one number, so a long table row still reads as one row). Save writes the file back and
+rebuilds, **without pulling** (a pull could only get in the way of the edit just made), and does not
+commit:
+
+- **Only files the build published** can be opened: `?file=` is looked up among the pages' sources,
+  never opened as a path, and the path is checked to stay inside the source folder.
+- **Written back as the file had it**: its line endings and its final newline, so `git diff` shows
+  the change and nothing else. Text that is not UTF-8 is refused - the renderer would refuse it at
+  the next build.
+- **A file that changed after the editor opened it** - a pull, an edit on the server - is not
+  written over: the form carries a hash of the file as it was, and a save onto a different one is
+  refused with the text kept in the form.
+
+**What differs from the remote** (`SourceStatus`): every repository of the source, the submodules
+too, is asked for its uncommitted files (`git status`) and for the files of commits the remote does
+not have (`git diff <upstream>...HEAD`, or `origin/HEAD` for a submodule at a commit). The tree marks
+those pages *not committed* or *not pushed*, the Documentation screen lists every such file, and the
+editor says above the text that it should be committed and pushed - until then the change exists only
+on the server.
+
+**Asked after the screen is drawn.** Each git command is a process started, so the list and the editor
+render without it, as fast as any other list, and `docs-admin.js` fetches `/admin/docs/changes` - the
+warning, rendered, and a badge per source file - a moment later. It is kept to few commands: one
+`git status --porcelain=v2 --branch` per repository says both what is changed and how far the branch
+is ahead of its upstream, the unpushed files are asked for only when there are some, and
+`.gitmodules` is read in PHP. Four repositories are six commands where they were fifteen.
 
 The last build is kept in a setting, `docs_last_build`, written by every build - the button's and
 `dpress docs:build`'s alike. Not the pages' `built_at`: a build that makes nothing leaves the last

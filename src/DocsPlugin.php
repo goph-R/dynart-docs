@@ -29,6 +29,8 @@ class DocsPlugin extends AbstractPlugin {
             Build\SourceUpdater::class => Build\SourceUpdater::class,
             DocsCommands::class => DocsCommands::class,
             DocsSettings::class => DocsSettings::class,
+            Build\Git::class => Build\Git::class,
+            Build\SourceStatus::class => Build\SourceStatus::class,
             DocsPages::class => DocsPages::class,
             DocsContext::class => DocsContext::class,
             DocsTreeBlock::class => DocsTreeBlock::class,
@@ -37,6 +39,11 @@ class DocsPlugin extends AbstractPlugin {
 
     public function controllers(): array {
         return [DocsAdminController::class, DocsController::class];
+    }
+
+    /** Changing a page's source is a permission of its own: it writes to the repository's clone */
+    public function permissions(): array {
+        return [Docs::PERMISSION_EDIT => 'Documentation'];
     }
 
     public function views(): array {
@@ -64,9 +71,9 @@ class DocsPlugin extends AbstractPlugin {
         return ['docs.css' => 'data-docs'];
     }
 
-    /** The status box of the Documentation screen */
+    /** The Documentation screens' styles, and the script that fills in their git status */
     public function assets(): array {
-        return ['docs-admin.css'];
+        return ['docs-admin.css', 'docs-admin.js'];
     }
 
     /** The Documentation screen, after Pages: it is content, read-only as it is here */

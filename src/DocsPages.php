@@ -40,6 +40,14 @@ class DocsPages {
         return $rows[0] ?? null;
     }
 
+    /** The page built from a source file, by its path in the source folder - `index.md` */
+    public function findBySource(string $source): ?DocsPage {
+        $page = $this->db->fetch(
+            'select * from '.$this->table().' where `source` = :source', [':source' => $source], DocsPage::class
+        );
+        return $page instanceof DocsPage ? $page : null;
+    }
+
     /**
      * Every page without its HTML: `id`, `path`, `title`, `parent_id`, `position`, `sequence`, `source`
      *
