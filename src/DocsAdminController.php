@@ -81,7 +81,8 @@ class DocsAdminController extends AbstractAdminController {
             'columns'    => [
                 'title'  => ['label' => 'Title', 'tree' => true,
                              'link' => $this->can(Docs::PERMISSION_EDIT) ? 'edit_url' : 'view_url'],
-                'path'   => ['label' => 'Address'],
+                // no Address column: it is the source's path again without `.md`, and the View
+                // action is the way to the page
                 'source' => ['label' => 'Source'],
                 'git'    => ['label' => '', 'view' => 'html'],
             ],
@@ -102,7 +103,6 @@ class DocsAdminController extends AbstractAdminController {
                     'parent_id' => $row['parent_id'],
                     'depth'     => $depth,
                     'title'     => $row['title'],
-                    'path'      => '/'.ltrim($this->builder->route($row['path']), '/'),
                     'source'    => $row['source'],
                     'view_url'  => $this->router->url($this->builder->route($row['path'])),
                     'edit_url'  => $this->router->url('/admin/docs/edit', ['file' => $row['source']]),
