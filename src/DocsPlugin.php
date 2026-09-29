@@ -88,11 +88,11 @@ class DocsPlugin extends AbstractPlugin {
     }
 
     public function entities(): array {
-        return [Entity\DocsPage::class];
+        return [Entity\DocsPage::class, Entity\DocsImage::class];
     }
 
     public function migrations(): array {
-        return [Migration\CreateDocsPageTable::class];
+        return [Migration\CreateDocsPageTable::class, Migration\CreateDocsImageTable::class];
     }
 
     public function commands(): array {

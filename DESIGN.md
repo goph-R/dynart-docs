@@ -1,10 +1,11 @@
 # Docs - a documentation site from a folder of Markdown
 
-**Status: the build and the site work** (plugin 0.5.0, on Dpress 0.80.0 and dynart-micro 0.20.3).
+**Status: the build and the site work** (plugin 0.6.0, on Dpress 0.80.0 and dynart-micro 0.20.3).
 `dpress docs:build` builds all 54 pages `docs-public`'s toctrees reach, with **the heading ids of
 the Sphinx build on every one** - checked against its `_build/html` - and `/docs/...` serves them,
 with the old `.html` addresses answered by a 301, and the admin has a Documentation screen. The
-Pascal in it is highlighted since Dpress 0.80.0. All five steps are done.
+Pascal in it is highlighted since Dpress 0.80.0. All five steps are done, and pages can show
+images since 0.6.0.
 
 A Dpress plugin that does what `sphinx-build` does for
 [docs-public](https://github.com/DynartInteractive/docs-public) - reads a folder of MyST Markdown,
@@ -36,10 +37,8 @@ uses, and the build has to understand:
 | `<br>` in a table cell | tables in `dos-game-engine` | `{{ br() }}` - raw HTML is stripped by the renderer |
 | bare URLs (`linkify`) | throughout | Dpress's autolinks already |
 
-**Not yet**, and worth saying: **Pascal is not a language the code highlighter knows** (EnlighterJS
-has no Pascal), and 338 of the code blocks are Pascal - they render as plain code until a Pascal
-definition is added to the highlighter. No page has an image yet, so images - which would have to
-be copied or served from the source folder - are left for when one does.
+**Pascal** is 338 of the code blocks, and EnlighterJS has no Pascal: Dpress 0.80.0 added a Pascal
+definition to its highlighter for them. **Images** are the section below (0.6.0).
 
 ## The build
 
@@ -72,6 +71,39 @@ What it does:
 `dp_docs_page`: `path` (the address below the base, original case, unique), `title`, `parent_id`,
 `position`, `html` (rendered), `headings` (JSON: level, text, id), `source` (the file, relative),
 `source_hash` (so an unchanged file need not be re-rendered), `built_at`.
+
+`dp_docs_image` (0.6.0): `path` (in the source folder, original case, unique), `hash` (sha256),
+`mime`, `width`, `height`, `built_at` - the images the built pages show, replaced with them.
+
+## Images
+
+**One place for an image: the source folder.** A page shows one the way Markdown does anywhere -
+`![The palette](images/vga.png)`, relative to the page's file (or `/…` from the source folder's
+root, as Sphinx reads it) - so it reads the same on GitHub. The build (`Images`) turns that into
+the file's address under the base, `/docs/engine/images/vga.png?v=<12 of its hash>`, and the site
+serves it **from the source folder, through PHP** (`DocsController::image()`). Nothing is copied:
+slower than Apache handing over a file, and worth it for there being no second copy to drift.
+
+**Only what a published page shows is served.** The build's list (`dp_docs_image`) is all an
+image address under `/docs` answers; a file no page references is a 404 however it got into the
+repository. A file is on the list when:
+
+- its path stays inside the source folder and passes through no hidden folder (`.git`), and its
+  real path - links followed - is inside it too;
+- it is a **png, jpg, gif or webp** - **not SVG**, which opened on the site's own address can run
+  script (a PNG of it works);
+- its path has **no space**: Apache refuses one in the address it rewrites to the front
+  controller (`AH10411`, a 403 before PHP runs);
+- it is at most 10 MB, and `getimagesize()` agrees it is what its extension says.
+
+Anything else is a build problem against the page, and the image is left as it was written.
+The page's `<img>` gets `width`, `height` (so the text does not jump as it loads) and
+`loading="lazy"`.
+
+**PHP pays once per reader.** The address a page has is answered `immutable` for a year: a
+changed file is a new `?v=` after the next build, and one changed *since* the build is not given
+the year. Any other address is kept five minutes, with an `ETag` (size and time) answered with a
+304 while the file has not changed. `nosniff`, and the type from the extension.
 
 ## What a visitor gets
 
@@ -128,6 +160,12 @@ A **Documentation** section in the navigation, after Pages, with: the source fol
 the time and result of the last build - its problems listed - a **Build now** button, and the tree
 of built pages, each with a View. The settings are in their own *Documentation* section
 of the Site tab, which has a Build button too; each goes back to the screen it was pressed on.
+
+**Preview media in the editor** (Dpress 0.85.0): the editor's field carries
+`data-relative-preview`, pointing at `GET /admin/docs/file?page=<source>&path=<as written>`, so a
+relative image is read from the page's own folder in the source - with the build's rules
+(`Images::inspect()`), and for a file no page shows yet, which is the one being previewed. Behind
+`docs.edit`, `no-store`, and a 404 for anything the build would refuse.
 
 **Editing a page's source** (0.5.0): with the `docs.edit` permission, a page's title - and an Edit
 action beside its View - opens its source file in the Markdown editor, its lines numbered (a wrapped

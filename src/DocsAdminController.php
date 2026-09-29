@@ -5,7 +5,9 @@ namespace Dynart\Docs;
 use Dynart\Micro\Attribute\Route;
 use Dynart\Micro\ConfigInterface;
 use Dynart\Micro\JwtAuthInterface;
+use Dynart\Micro\Micro;
 use Dynart\Micro\RequestInterface;
+use Dynart\Micro\ResponseInterface;
 use Dynart\Micro\RouterInterface;
 use Dynart\Micro\ViewInterface;
 use Dynart\Dpress\Controller\Admin\AbstractAdminController;
@@ -14,6 +16,7 @@ use Dynart\Dpress\Query\ListRequest;
 use Dynart\Dpress\Security\Permissions;
 use Dynart\Docs\Build\BuildReport;
 use Dynart\Docs\Build\DocsBuilder;
+use Dynart\Docs\Build\Images;
 use Dynart\Docs\Build\SourceStatus;
 use Dynart\Dpress\DpressException;
 
@@ -175,7 +178,11 @@ class DocsAdminController extends AbstractAdminController {
         if (!$this->forms->has(Docs::FORM_PAGE)) {
             $this->forms->add(Docs::FORM_PAGE, [DocsForms::class, 'page']);
         }
-        $form = $this->forms->create(Docs::FORM_PAGE, ['markdown' => $text, 'hash' => SourceFiles::hash($text)]);
+        $form = $this->forms->create(Docs::FORM_PAGE, [
+            'markdown'    => $text,
+            'hash'        => SourceFiles::hash($text),
+            'preview_url' => $this->router->url('/admin/docs/file', ['page' => $source]),
+        ]);
         if ($form->process()) {
             $values = $form->values();
             try {
@@ -189,6 +196,38 @@ class DocsAdminController extends AbstractAdminController {
             return '';
         }
         return $this->editor($page, $source, $form);
+    }
+
+    /**
+     * An image beside a page's source, for the editor's *Preview media* (Dpress 0.85.0)
+     *
+     * `?page=` is the page's source file, looked up like `edit()`'s, and `?path=` the image as
+     * the page writes it, resolved against that file with the build's own rules
+     * (`Images::inspect()`) - so it answers for a file no page shows yet, which is the one a
+     * preview is for, and never for anything the build would not publish. Not kept: it is being
+     * worked on.
+     */
+    #[Route('GET', '/admin/docs/file')]
+    public function file(): string {
+        $this->requirePermission(Docs::PERMISSION_EDIT);
+        $source = (string)$this->request->get('page', '');
+        $page = $source !== '' ? $this->pages->findBySource($source) : null;
+        $folder = $this->builder->sourceFolder();
+        $target = (string)$this->request->get('path', '');
+        $checked = $page === null || $folder === '' || !Images::isRelative($target)
+            ? ['problem' => 'no page']
+            : Images::inspect($folder, Images::resolve(preg_replace('/\.md$/i', '', $source), $target), $target);
+        if (isset($checked['problem'])) {
+            $this->app()->sendError(404);
+            return '';
+        }
+        $response = Micro::get(ResponseInterface::class);
+        $response->setHeader('Content-Type', $checked['mime']);
+        $response->setHeader('Cache-Control', 'no-store');
+        $response->setHeader('X-Content-Type-Options', 'nosniff');
+        $response->send((string)file_get_contents($checked['file']));
+        $this->app()->finish();
+        return '';
     }
 
     protected function editor(\Dynart\Docs\Entity\DocsPage $page, string $source, $form): string {

@@ -4,11 +4,14 @@ namespace Dynart\Docs;
 
 use Dynart\Micro\ConfigInterface;
 use Dynart\Micro\JwtAuthInterface;
+use Dynart\Micro\Micro;
 use Dynart\Micro\RequestInterface;
+use Dynart\Micro\ResponseInterface;
 use Dynart\Micro\RouterInterface;
 use Dynart\Micro\ViewInterface;
 use Dynart\Dpress\Controller\AbstractController;
 use Dynart\Docs\Build\DocsBuilder;
+use Dynart\Docs\Build\Images;
 use Dynart\Docs\Entity\DocsPage;
 
 /**
@@ -25,6 +28,9 @@ use Dynart\Docs\Entity\DocsPage;
  * | `/docs/engine/VGA.html` - the address Sphinx published | `/docs/engine/VGA` |
  * | `/docs/engine/index.html`, `/docs/engine/index` | `/docs/engine` |
  * | `/docs/engine/vga` - another case | `/docs/engine/VGA` |
+ *
+ * **An image is served from the source folder**, where it is - `/docs/engine/images/vga.png` is
+ * `engine/images/vga.png` in it - and only when the last build found a page showing it.
  */
 class DocsController extends AbstractController {
 
@@ -48,6 +54,10 @@ class DocsController extends AbstractController {
 
     /** `/docs/<path>` */
     public function page(string $path): string {
+        if (Images::isImagePath($path)) {
+            $this->image(trim($path, '/'));
+            return '';
+        }
         $canonical = self::canonicalPath($path);
         $page = $this->pages->findByPath($canonical);
         if ($page === null) {
@@ -98,6 +108,67 @@ class DocsController extends AbstractController {
             $attributes = ' class="entry-title"'.$attributes;
         }
         return ['<h1'.$attributes.'>'.$match[2].'</h1>', substr($html, strlen($match[0]))];
+    }
+
+    /**
+     * An image, out of the source folder
+     *
+     * The list is the build's (`DocsImage`), so a path no page shows is a 404 whatever is in the
+     * folder; the file is checked again here, since the folder may have changed since.
+     */
+    protected function image(string $path): void {
+        $folder = $this->builder->sourceFolder();
+        $image = $folder === '' ? null : $this->pages->findImage($path);
+        $file = $image === null ? '' : $folder.'/'.$image->path;
+        if ($image === null || !is_file($file) || !Images::inside($folder, $file)) {
+            $this->app()->sendError(404);
+            return;
+        }
+        $modified = (int)filemtime($file);
+        $answer = self::imageAnswer(
+            $image->hash, (string)$this->request->get('v', ''),
+            $modified <= (int)strtotime($image->built_at.' UTC'),
+            '"'.filesize($file).'-'.$modified.'"', (string)$this->request->header('If-None-Match', '')
+        );
+        $response = Micro::get(ResponseInterface::class);
+        if (http_response_code() !== false) {   // not in a test
+            http_response_code($answer['status']);
+        }
+        foreach ($answer['headers'] as $name => $value) {
+            $response->setHeader($name, $value);
+        }
+        if ($answer['status'] === 200) {
+            $response->setHeader('Content-Type', $image->mime);
+            $response->setHeader('Content-Length', (string)filesize($file));
+            $response->send((string)file_get_contents($file));
+        } else {
+            $response->send();
+        }
+        $this->app()->finish();
+    }
+
+    /**
+     * How an image is answered: its status and its caching
+     *
+     * **Kept for a year** when asked for by the address a page has - `?v=` the start of the hash
+     * the build saw - and the file is not newer than that build: a changed image is a new address
+     * after the next one, so the old answer never has to be taken back. Asked for any other way,
+     * it is kept for five minutes and then asked about again, with the `ETag` - the file's size
+     * and time - answered with a 304 while it has not changed.
+     *
+     * `nosniff`, so a browser takes the type this says and never guesses another from the bytes.
+     *
+     * @return array{status: int, headers: array<string, string>}
+     */
+    public static function imageAnswer(string $hash, string $version, bool $builtSince, string $etag, string $ifNoneMatch): array {
+        $current = $builtSince && $version !== '' && strlen($version) >= 8 && str_starts_with($hash, $version);
+        $headers = [
+            'Cache-Control'          => $current ? 'public, max-age=31536000, immutable' : 'public, max-age=300',
+            'ETag'                   => $etag,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+        $matches = in_array($etag, array_map('trim', explode(',', $ifNoneMatch)), true) || trim($ifNoneMatch) === '*';
+        return ['status' => $matches ? 304 : 200, 'headers' => $headers];
     }
 
     protected function renderPage(DocsPage $page): string {

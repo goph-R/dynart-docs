@@ -10,12 +10,15 @@ use Dynart\Dpress\Form\DpressForm;
 class DocsForms {
 
     /**
-     * @param array $context `markdown` - the file's text; `hash` - `SourceFiles::hash()` of it
+     * @param array $context `markdown` - the file's text; `hash` - `SourceFiles::hash()` of it;
+     *                       `preview_url` - where *Preview media* asks for a relative image
      */
     public function page(DpressForm $form, array $context): void {
         $form->addFields([
             'markdown' => ['type' => 'markdown', 'label' => 'Source', 'numbers' => true,
-                           'description' => 'The Markdown file itself, MyST and all - saving writes it back as it is here.'],
+                           'description' => 'The Markdown file itself, MyST and all - saving writes it back as it is here.',
+                           // a relative image is the page's folder in the source, not the site's
+                           'attributes' => ['data-relative-preview' => (string)($context['preview_url'] ?? '')]],
             // what the file was when this form was drawn: a save onto a file that has changed since
             // - a pull, an edit on the server - is refused rather than written over it
             'hash'     => ['type' => 'hidden', 'required' => false],

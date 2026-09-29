@@ -9,6 +9,7 @@ use Dynart\Micro\Entities\EntityManager;
 use Dynart\Dpress\Content\MarkdownRenderer;
 use Dynart\Dpress\Service\SettingService;
 use Dynart\Docs\Docs;
+use Dynart\Docs\Entity\DocsImage;
 use Dynart\Docs\Entity\DocsPage;
 
 /**
@@ -20,7 +21,8 @@ use Dynart\Docs\Entity\DocsPage;
  * 3. **Convert** each page's MyST (`Myst`), **render** it with `MarkdownRenderer` - so shortcodes,
  *    callouts, code highlighting and bare URLs are the blog's - and give its headings Sphinx's ids
  *    (`HeadingIds`).
- * 4. **Replace** the whole built tree in one transaction: a page taken out of the source is taken
+ *    The images the pages show are checked and given their address on the way (`Images`).
+ * 4. **Replace** the whole built tree, and the list of images, in one transaction: a page taken out of the source is taken
  *    off the site, and a build that fails half way shows nothing of itself.
  *
  * The addresses in the pages are **full URLs, resolved at build time** - the way a post's
@@ -72,6 +74,15 @@ class DocsBuilder {
             'select count(1) as `pages`, max(`built_at`) as `built_at` from '.$this->em->safeTableName(DocsPage::class)
         );
         return ['pages' => (int)($row['pages'] ?? 0), 'built_at' => $row['built_at'] ?? null];
+    }
+
+    /**
+     * The address of an image, from its path in the source folder - under the base, where the
+     * page beside it is, with the start of its hash as the version
+     */
+    public function imageUrl(string $path, string $version): string {
+        $encoded = implode('/', array_map('rawurlencode', explode('/', $path)));
+        return $this->router->url($this->route($encoded), ['v' => $version]);
     }
 
     /** The route of a page, from its path below the base */
@@ -175,8 +186,10 @@ class DocsBuilder {
                 $labels[$key] = $label + ['docname' => $docname];
             }
         }
+        $images = new Images($folder, fn(string $path, string $version) => $this->imageUrl($path, $version));
         $context = [
             'report'   => $report,
+            'images'   => $images,
             'url'      => fn(string $docname) => isset($nodes[$docname]) ? $this->router->url($this->route($nodes[$docname]['path'])) : null,
             'title'    => fn(string $docname) => $titles[$docname] ?? basename($docname),
             'children' => fn(string $docname) => $nodes[$docname]['children'] ?? [],
@@ -186,7 +199,7 @@ class DocsBuilder {
         $built = [];
         foreach ($nodes as $docname => $node) {
             $converted = (new Myst(['docname' => $docname] + $context))->convert($sources[$docname]);
-            $rendered = HeadingIds::apply($this->markdown->render($converted['markdown']), $converted['ids']);
+            $rendered = HeadingIds::apply($images->decorate($this->markdown->render($converted['markdown'])), $converted['ids']);
             $built[$docname] = [
                 'node'     => $node,
                 'title'    => $rendered['title'] !== '' ? $rendered['title'] : $titles[$docname],
@@ -195,7 +208,7 @@ class DocsBuilder {
                 'hash'     => hash('sha256', $sources[$docname]),
             ];
         }
-        $this->store($built);
+        $this->store($built, $images->found());
         $report->pages = count($built);
         return $report;
     }
@@ -206,11 +219,22 @@ class DocsBuilder {
      * Parents first - `SourceTree` gives them in reading order - so each child knows its parent's
      * new id when it is written.
      */
-    protected function store(array $built): void {
-        $this->db->runInTransaction(function () use ($built) {
+    protected function store(array $built, array $images = []): void {
+        $this->db->runInTransaction(function () use ($built, $images) {
             $this->db->query('delete from '.$this->em->safeTableName(DocsPage::class));
+            $this->db->query('delete from '.$this->em->safeTableName(DocsImage::class));
             $ids = [];
             $now = gmdate('Y-m-d H:i:s');
+            foreach ($images as $path => $image) {
+                $row = new DocsImage();
+                $row->path = $path;
+                $row->hash = $image['hash'];
+                $row->mime = $image['mime'];
+                $row->width = $image['width'];
+                $row->height = $image['height'];
+                $row->built_at = $now;
+                $this->em->save($row);
+            }
             foreach ($built as $docname => $page) {
                 $node = $page['node'];
                 $row = new DocsPage();

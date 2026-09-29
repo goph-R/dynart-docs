@@ -16,6 +16,7 @@ namespace Dynart\Docs\Build;
  * | ``{ref}`id` `` and ``{ref}`text <id>` `` | a link to the heading that label names |
  * | ``{doc}`path` `` | a link to that page, its title as the text |
  * | `[text](../ENGINE/BASEGAME.md#x)` | a link to that page's address |
+ * | `![alt](images/vga.png)` | the image's address under the base (`Images`) |
  * | `<br>` | `{{ br() }}` - raw HTML is stripped by the renderer |
  *
  * **Line by line, and never inside a code block**: a Pascal listing is full of `{` and `<`, and
@@ -69,7 +70,8 @@ class Myst {
      *   `url` callable(string docname): ?string - null for a page no toctree reaches,
      *   `title` callable(string docname): string,
      *   `children` callable(string docname): string[],
-     *   `labels` array<string, array{docname: string, id: string, title: string}>
+     *   `labels` array<string, array{docname: string, id: string, title: string}>,
+     *   `images` ?Images - the build's; without one an image is left as it is written
      */
     public function __construct(private array $context) {}
 
@@ -294,6 +296,12 @@ class Myst {
             if ($index % 2 === 1) {
                 continue; // a code span, left as written
             }
+            // `![alt](path "title")`: the alt may hold escaped brackets, the path may be in `<>`
+            $part = preg_replace_callback(
+                '/(!\[(?:[^\[\]\\\\]|\\\\.)*\]\()\s*(<[^>]*>|[^()\s]+)(\s+"[^"]*")?\s*\)/',
+                fn(array $m) => $this->image($m[0], $m[1], $m[2], $m[3] ?? ''),
+                $part
+            );
             $part = preg_replace_callback(
                 '/\]\(\s*([^()\s]+?\.md)(#[^()\s]*)?\s*\)/i',
                 fn(array $m) => $this->link($m[0], $m[1], $m[2] ?? ''),
@@ -323,6 +331,24 @@ class Myst {
         }
         $page = $label['docname'] === $this->context['docname'] ? '' : (($this->context['url'])($label['docname']) ?? '');
         return '['.self::escapeLinkText($text ?? $label['title']).']('.$page.'#'.$label['id'].')';
+    }
+
+    /**
+     * An image in the source folder, to its address - or as it was written, with the reason it
+     * has none in the report
+     */
+    private function image(string $whole, string $opening, string $target, string $title): string {
+        $images = $this->context['images'] ?? null;
+        $target = trim($target, '<>');
+        if (!$images instanceof Images || !Images::isRelative($target)) {
+            return $whole;
+        }
+        $published = $images->publish($this->context['docname'], $target);
+        if (isset($published['problem'])) {
+            $this->problem($published['problem']);
+            return $whole;
+        }
+        return $opening.$published['url'].$title.')';
     }
 
     /** A relative link to another page's `.md`, to that page's address */

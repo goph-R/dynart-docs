@@ -4,6 +4,7 @@ namespace Dynart\Docs;
 
 use Dynart\Micro\Entities\Database;
 use Dynart\Micro\Entities\EntityManager;
+use Dynart\Docs\Entity\DocsImage;
 use Dynart\Docs\Entity\DocsPage;
 
 /**
@@ -118,6 +119,23 @@ class DocsPages {
             usort($list, fn(array $a, array $b): int => $a['position'] <=> $b['position']);
         }
         return $children;
+    }
+
+    /**
+     * An image the last build published, by its path in the source folder - in exactly that case,
+     * since a file system that minds case would not find another spelling of it
+     */
+    public function findImage(string $path): ?DocsImage {
+        $rows = $this->db->fetchAll(
+            'select * from '.$this->em->safeTableName(DocsImage::class).' where `path` = :path',
+            [':path' => $path], DocsImage::class
+        );
+        foreach ($rows as $row) {
+            if ($row->path === $path) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     protected function table(): string {
