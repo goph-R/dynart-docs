@@ -182,7 +182,7 @@ commit:
   written over: the form carries a hash of the file as it was, and a save onto a different one is
   refused with the text kept in the form.
 
-**What differs from the remote** (`SourceStatus`): every repository of the source, the submodules
+**What differs from the remote** (`RepositoryStatus`, in Dpress since 0.93.0): every repository of the source, the submodules
 too, is asked for its uncommitted files (`git status`) and for the files of commits the remote does
 not have (`git diff <upstream>...HEAD`, or `origin/HEAD` for a submodule at a commit). The tree marks
 those pages *not committed* or *not pushed*, the Documentation screen lists every such file, and the
@@ -209,7 +209,7 @@ Rebuild button. The build reads only inside the folder it is given.
 **Or the build pulls it** (0.4.0): with *Update* on in the Documentation settings, a build - the
 button's, or `dpress docs:build` from a cron job - first runs `git pull --ff-only
 --recurse-submodules` and `git submodule update --init --recursive` in the source folder
-(`SourceUpdater`). What it did is the first line of the build's report: "updated from a to b",
+(`RepositoryUpdater`, in Dpress since 0.93.0). What it did is the first line of the build's report: "updated from a to b",
 "up to date", or - as a problem, with the build going ahead on what is there - git's own
 `fatal:` line.
 

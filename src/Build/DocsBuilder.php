@@ -7,6 +7,7 @@ use Dynart\Micro\RouterInterface;
 use Dynart\Micro\Entities\Database;
 use Dynart\Micro\Entities\EntityManager;
 use Dynart\Dpress\Content\MarkdownRenderer;
+use Dynart\Dpress\Repository\RepositoryUpdater;
 use Dynart\Dpress\Service\SettingService;
 use Dynart\Docs\Docs;
 use Dynart\Docs\Entity\DocsImage;
@@ -38,7 +39,7 @@ class DocsBuilder {
         protected MarkdownRenderer $markdown,
         protected EntityManager $em,
         protected Database $db,
-        protected SourceUpdater $updater,
+        protected RepositoryUpdater $updater,
     ) {}
 
     /** The source folder the setting names, as a path on this machine, or '' when none is set */
@@ -146,7 +147,10 @@ class DocsBuilder {
         }
         $result = $this->updater->update($folder);
         if ($result['ok']) {
-            $report->update = $result['message'];
+            // said as the source, which is what somebody reading a build's report is asking about
+            $report->update = $result['before'] === $result['after']
+                ? "The source was up to date, at {$result['after']}."
+                : "The source was updated from {$result['before']} to {$result['after']}.";
         } else {
             // a problem rather than the update line, so it is listed where problems are read
             $report->problem('', 'The source was not updated, so this is the last one pulled. '.$result['message']);

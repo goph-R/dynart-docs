@@ -26,7 +26,7 @@ class Docs {
      */
     const LAST_BUILD = 'docs_last_build';
 
-    /** Whether a build first pulls the source folder with git - see `SourceUpdater` */
+    /** Whether a build first pulls the source folder with git - see Dpress's `RepositoryUpdater` */
     const GIT_PULL = 'docs_git_pull';
 
     /** Who may change a page's source from the admin */

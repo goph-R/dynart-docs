@@ -17,7 +17,8 @@ use Dynart\Dpress\Security\Permissions;
 use Dynart\Docs\Build\BuildReport;
 use Dynart\Docs\Build\DocsBuilder;
 use Dynart\Docs\Build\Images;
-use Dynart\Docs\Build\SourceStatus;
+use Dynart\Dpress\Repository\RepositoryFiles;
+use Dynart\Dpress\Repository\RepositoryStatus;
 use Dynart\Dpress\DpressException;
 
 /**
@@ -25,7 +26,7 @@ use Dynart\Dpress\DpressException;
  *
  * Build, and an editor for a page's source file (`edit()`): it writes the Markdown back into the
  * source folder and rebuilds. It does not commit - so every page shows whether its file differs
- * from the remote, and the editor says it should be committed while it does (`SourceStatus`).
+ * from the remote, and the editor says it should be committed while it does (Dpress's `RepositoryStatus`).
  *
  * Behind the permission that reads the settings, since everything it shows is what two
  * settings and the last build made of them.
@@ -45,7 +46,7 @@ class DocsAdminController extends AbstractAdminController {
         ListRequest $list,
         protected DocsBuilder $builder,
         protected DocsPages $pages,
-        protected SourceStatus $sourceStatus,
+        protected RepositoryStatus $sourceStatus,
     ) {
         parent::__construct($view, $router, $request, $config, $jwtAuth, $forms, $list);
     }
@@ -140,8 +141,8 @@ class DocsAdminController extends AbstractAdminController {
     /** What the tree says about a page's file: nothing, or that it differs from the remote */
     public static function gitBadge(?string $state): string {
         return match ($state) {
-            SourceStatus::UNCOMMITTED => '<span class="badge badge-draft">not committed</span>',
-            SourceStatus::UNPUSHED    => '<span class="badge badge-draft">not pushed</span>',
+            RepositoryStatus::UNCOMMITTED => '<span class="badge badge-draft">not committed</span>',
+            RepositoryStatus::UNPUSHED    => '<span class="badge badge-draft">not pushed</span>',
             default                   => '',
         };
     }
@@ -166,7 +167,7 @@ class DocsAdminController extends AbstractAdminController {
         if ($page === null) {
             $this->app()->sendError(404);
         }
-        $files = new SourceFiles($this->builder->sourceFolder());
+        $files = new RepositoryFiles($this->builder->sourceFolder());
         try {
             $text = $files->read($source);
         } catch (DpressException $e) {
@@ -180,7 +181,7 @@ class DocsAdminController extends AbstractAdminController {
         }
         $form = $this->forms->create(Docs::FORM_PAGE, [
             'markdown'    => $text,
-            'hash'        => SourceFiles::hash($text),
+            'hash'        => RepositoryFiles::hash($text),
             'preview_url' => $this->router->url('/admin/docs/file', ['page' => $source]),
         ]);
         if ($form->process()) {

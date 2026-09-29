@@ -10,7 +10,7 @@ use Dynart\Dpress\Form\DpressForm;
 class DocsForms {
 
     /**
-     * @param array $context `markdown` - the file's text; `hash` - `SourceFiles::hash()` of it;
+     * @param array $context `markdown` - the file's text; `hash` - `RepositoryFiles::hash()` of it;
      *                       `preview_url` - where *Preview media* asks for a relative image
      */
     public function page(DpressForm $form, array $context): void {

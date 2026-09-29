@@ -26,11 +26,8 @@ class DocsPlugin extends AbstractPlugin {
     public function services(): array {
         return [
             DocsBuilder::class => DocsBuilder::class,
-            Build\SourceUpdater::class => Build\SourceUpdater::class,
             DocsCommands::class => DocsCommands::class,
             DocsSettings::class => DocsSettings::class,
-            Build\Git::class => Build\Git::class,
-            Build\SourceStatus::class => Build\SourceStatus::class,
             DocsPages::class => DocsPages::class,
             DocsContext::class => DocsContext::class,
             DocsTreeBlock::class => DocsTreeBlock::class,
